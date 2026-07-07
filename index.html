@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Galactica RSS Mobile</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#131314">
+  <link rel="icon" type="image/png" href="icon-48.png">
+  
+  <!-- Tailwind CSS para utilitários de responsividade e layout rápido -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <style>
+    :root {
+      --bg-color: #f8f9fa;
+      --surface-color: #ffffff;
+      --surface-hover: #f1f3f4;
+      --text-primary: #202124;
+      --text-secondary: #5f6368;
+      --accent-color: #f948a1;
+      --border-color: #dadce0;
+      --danger-color: #d93025;
+      --pulse-color: rgba(0, 0, 0, 0.4);
+      --pulse-border: #000000;
+      --player-bg: #f2f3f4;
+    }
+
+    body[data-theme="dark"] {
+      --bg-color: #131314;
+      --surface-color: #1e1f20;
+      --surface-hover: #333537;
+      --text-primary: #e8eaed;
+      --text-secondary: #9aa0a6;
+      --border-color: #333537;
+      --pulse-color: rgba(255, 255, 255, 0.3);
+      --pulse-border: #ffffff;
+      --player-bg: #2a2b2c;
+    }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background-color: var(--bg-color); 
+      color: var(--text-primary);
+      transition: background-color 0.3s, color 0.3s;
+      overflow-x: hidden;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Otimização de toque e áreas clicáveis para celular */
+    button, select, input, .card, .category-pill-btn {
+      touch-action: manipulation;
+    }
+
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      padding-bottom: 80px; /* Margem para a barra de navegação móvel */
+      scroll-behavior: smooth;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Layout responsivo híbrido (Desktop com barra lateral, Mobile com abas inferiores) */
+    @media (min-width: 768px) {
+      body {
+        flex-direction: row;
+        padding: 8px 0;
+      }
+      .content-area {
+        height: calc(100vh - 16px);
+        background: var(--surface-color);
+        border-radius: 16px;
+        border: 1px solid var(--border-color);
+        margin-left: 8px;
+        padding-bottom: 24px;
+      }
+      .mobile-navbar {
+        width: 60px !important;
+        height: calc(100vh - 16px) !important;
+        flex-direction: column !important;
+        justify-content: space-between !important;
+        padding: 16px 0 !important;
+        border-top: none !important;
+        border-left: 1px solid var(--border-color);
+        position: static !important;
+      }
+      .category-container-horizontal {
+        display: none !important;
+      }
+      .desktop-category-sidebar {
+        display: flex !important;
+      }
+    }
+
+    /* Categorias Deslizantes em Carrossel no Mobile */
+    .category-container-horizontal {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      gap: 8px;
+      padding: 8px 16px;
+      background: var(--surface-color);
+      border-bottom: 1px solid var(--border-color);
+      -webkit-overflow-scrolling: touch;
+    }
+    .category-container-horizontal::-webkit-scrollbar {
+      display: none;
+    }
+
+    .category-pill-btn {
+      white-space: nowrap;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      border: 1px solid var(--border-color);
+      background: var(--bg-color);
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+    }
+    .category-pill-btn.active {
+      background: var(--accent-color);
+      color: white;
+      border-color: var(--accent-color);
+    }
+
+    /* CARD DESIGN */
+    .card {
+      background: var(--surface-color);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      margin-bottom: 12px;
+      overflow: hidden;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+      transition: all 0.3s ease;
+    }
+    .card.faded {
+      opacity: 0.4;
+      filter: grayscale(40%);
+    }
+
+    .card-image-wrapper {
+      position: relative;
+      width: 100%;
+      height: 160px;
+      overflow: hidden;
+    }
+    .card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    /* LIST VIEW */
+    .list-view .card {
+      display: flex;
+      height: auto;
+      min-height: 100px;
+    }
+    .list-view .card-image-wrapper {
+      width: 100px;
+      height: auto;
+      flex-shrink: 0;
+    }
+    .list-view .card-summary {
+      display: none;
+    }
+
+    /* TITLE ONLY VIEW */
+    .title-only-view .card {
+      padding: 10px 16px;
+    }
+    .title-only-view .card-image-wrapper, .title-only-view .card-summary {
+      display: none;
+    }
+
+    .player-container {
+      background: var(--player-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+
+    @keyframes liquid-wave {
+      0% { transform: translateX(-50%) rotate(0deg); }
+      100% { transform: translateX(-50%) rotate(360deg); }
+    }
+    .control-btn.play-btn {
+      background: var(--accent-color);
+      color: white;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    @keyframes textPulse { 
+      0% { opacity: 0.6; filter: drop-shadow(0 0 0px var(--accent-color)); } 
+      50% { opacity: 1; filter: drop-shadow(0 0 5px var(--accent-color)); } 
+      100% { opacity: 0.6; filter: drop-shadow(0 0 0px var(--accent-color)); } 
+    }
+    .ai-icon.spinning { animation: textPulse 1.5s ease-in-out infinite; }
+
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text-primary);
+      color: var(--bg-color);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.85rem;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+    .toast.visible {
+      opacity: 1;
+    }
+
+    /* SKELETONS */
+    .skeleton {
+      animation: skeletonPulse 1.2s ease-in-out infinite alternate;
+      background-color: var(--border-color);
+      border-radius: 4px;
+    }
+    @keyframes skeletonPulse { 0% { opacity: 0.8; } 100% { opacity: 0.3; } }
+
+    /* Custom input controls */
+    .header-select {
+      background-color: var(--surface-color);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 4px 12px;
+      font-size: 0.8rem;
+    }
+
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+    .toggle-switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0;
+      background-color: var(--border-color); transition: .3s; border-radius: 24px;
+    }
+    .slider:before {
+      position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px;
+      background-color: white; transition: .3s; border-radius: 50%;
+    }
+    input:checked + .slider { background-color: var(--accent-color); }
+    input:checked + .slider:before { transform: translateX(20px); }
+  </style>
+</head>
+<body>
+
+  <!-- Categorias em Carrossel no Mobile -->
+  <div class="category-container-horizontal" id="mobile-category-carousel">
+    <!-- Renderizado via JavaScript -->
+  </div>
+
+  <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+    
+    <!-- CONTEÚDO PRINCIPAL (Timeline, Salvos, Feeds, Config) -->
+    <main class="content-area" id="main-scroll-container">
+      
+      <!-- ABA 1: TIMELINE -->
+      <section id="timeline" class="tab-content block">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold"><span data-i18n="title_timeline">Notícias</span> <span id="unread-count" class="text-sm font-normal text-gray-500"></span></h2>
+          <div class="flex items-center gap-2">
+            <button id="btn-view-toggle-timeline" class="p-2 border border-transparent rounded-lg hover:bg-gray-200">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+            <button id="btn-refresh" class="p-2 border border-transparent rounded-lg hover:bg-gray-200">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </button>
+            <button id="btn-clear" class="p-2 border border-transparent rounded-lg hover:bg-gray-200">
+              <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        </div>
+
+        <input type="search" id="search-timeline" class="w-full p-2 mb-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-sm" data-i18n-placeholder="search_timeline" placeholder="Buscar notícias...">
+
+        <!-- AI SUMMARY PLAYER -->
+        <div class="player-container mb-4" id="ai-summary-container">
+          <div class="flex justify-between items-center gap-2 mb-2">
+            <span class="player-title ai-icon font-semibold text-pink-500 text-sm" data-i18n="summary_title">Resumo</span>
+            <div class="flex items-center gap-4">
+              <button id="btn-rewind" class="p-1 text-gray-500" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M3 12a9 9 0 109-9 9.75 9.75 0 00-6.74 2.74L3 8M3 3v5h5"></path></svg>
+              </button>
+              <button class="control-btn play-btn" id="btn-play-summary">
+                <svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+              </button>
+              <button id="btn-forward" class="p-1 text-gray-500" disabled>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-4 h-4"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5"></path></svg>
+              </button>
+            </div>
+            <div class="flex gap-1">
+              <button class="speed-btn text-xs font-semibold px-2 py-1 rounded bg-gray-200 dark:bg-zinc-700 active" data-speed="1.0">1x</button>
+              <button class="speed-btn text-xs font-semibold px-2 py-1 rounded bg-gray-200 dark:bg-zinc-700" data-speed="1.5">1.5x</button>
+            </div>
+          </div>
+          <div class="w-full h-1 bg-gray-300 dark:bg-zinc-700 rounded-full overflow-hidden">
+            <div class="h-full bg-pink-500 w-0 transition-all duration-100" id="player-progress"></div>
+          </div>
+        </div>
+
+        <div id="timeline-list" class="flex flex-col gap-3">
+          <!-- Notícias serão injetadas via JavaScript -->
+        </div>
+      </section>
+
+      <!-- ABA 2: SALVOS -->
+      <section id="salvos" class="tab-content hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold" data-i18n="title_saved">Salvos</h2>
+          <select id="salvos-sort-select" class="header-select">
+            <option value="recent" data-i18n="sort_recent">Recentes</option>
+            <option value="oldest" data-i18n="sort_oldest">Antigos</option>
+          </select>
+        </div>
+        <input type="search" id="search-saved" class="w-full p-2 mb-4 rounded-xl border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 text-sm" data-i18n-placeholder="search_saved" placeholder="Buscar nos salvos...">
+        <div id="salvos-list" class="flex flex-col gap-3">
+          <!-- Itens Salvos injetados via JS -->
+        </div>
+      </section>
+
+      <!-- ABA 3: FEEDS -->
+      <section id="feeds" class="tab-content hidden">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-xl font-bold" data-i18n="title_feeds">Meus Feeds</h2>
+          <select id="feed-sort-select" class="header-select">
+            <option value="recent" data-i18n="sort_recent">Recentes</option>
+            <option value="az" data-i18n="sort_az">A > Z</option>
+          </select>
+        </div>
+        <div class="flex gap-2 mb-4">
+          <input type="url" id="feed-input" class="flex-1 p-2 border border-gray-300 dark:border-gray-700 rounded-xl bg-white dark:bg-zinc-800 text-sm" data-i18n-placeholder="placeholder_feed" placeholder="Ex: https://site.com/feed">
+          <button id="btn-add-feed" class="bg-pink-500 text-white font-bold px-4 py-2 rounded-xl text-lg hover:bg-pink-600">+</button>
+        </div>
+        <ul id="feed-list" class="flex flex-col gap-2">
+          <!-- Lista de Feeds via JS -->
+        </ul>
+      </section>
+
+      <!-- ABA 4: CONFIGURAÇÕES -->
+      <section id="config" class="tab-content hidden">
+        <h2 class="text-xl font-bold mb-4" data-i18n="title_options">Opções</h2>
+        
+        <div class="flex flex-col gap-4">
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_translate">Traduzir Timeline:</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="config-auto-translate">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_player">Player de resumo:</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="config-show-ai" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_summarize">Resumir:</label>
+            <select id="config-summary-type" class="header-select">
+              <option value="saved" data-i18n="tab_saved">Salvos</option>
+              <option value="timeline" data-i18n="tab_timeline">Timeline</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_voice">Voz do resumo:</label>
+            <select id="config-audio-type" class="header-select">
+              <option value="ai_voice" data-i18n="opt_ai">Voz por IA</option>
+              <option value="browser_tts" data-i18n="opt_tts">Voz do Navegador</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_llm">Modelo LLM:</label>
+            <select id="config-llm-model" class="header-select">
+              <option value="gemini-2.5-flash">Gemini Flash</option>
+              <option value="gpt-4o-mini">ChatGPT Mini</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_api">Chave API:</label>
+            <input type="password" id="config-api-key" class="p-2 border border-gray-300 dark:border-gray-700 bg-white dark:bg-zinc-800 rounded-xl text-sm w-44 text-center" placeholder="••••••••••••••••">
+          </div>
+
+          <hr class="border-gray-300 dark:border-gray-700 my-2">
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_range">Mostrar notícias dos últimos:</label>
+            <select id="config-range" class="header-select">
+              <option value="1" data-i18n="opt_1d">1 dia</option>
+              <option value="3" data-i18n="opt_3d">3 dias</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_lang">Idioma:</label>
+            <select id="config-language" class="header-select">
+              <option value="en" data-i18n="lang_en">Inglês</option>
+              <option value="pt-BR" data-i18n="lang_pt">Português</option>
+              <option value="es" data-i18n="lang_es">Espanhol</option>
+              <option value="fr" data-i18n="lang_fr">Francês</option>
+              <option value="zh" data-i18n="lang_zh">Chines</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_theme">Tema:</label>
+            <select id="config-theme" class="header-select">
+              <option value="light" data-i18n="opt_light">Claro</option>
+              <option value="dark" data-i18n="opt_dark">Escuro</option>
+            </select>
+          </div>
+
+          <div class="flex justify-between items-center">
+            <label data-i18n="cfg_unread">Mostrar contador de não lidas:</label>
+            <label class="toggle-switch">
+              <input type="checkbox" id="config-unread">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <hr class="border-gray-300 dark:border-gray-700 my-2">
+
+          <div class="p-4 bg-red-100/50 dark:bg-red-950/20 rounded-2xl flex flex-col gap-2">
+            <p class="text-xs text-gray-500" data-i18n="danger_txt">Apagar todos os dados armazenados (Feeds e Cache).</p>
+            <button id="btn-reset-data" class="w-full py-2 bg-pink-500 text-white rounded-xl text-sm font-semibold hover:bg-pink-600" data-i18n="btn_reset">Resetar Aplicativo</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- NAV BAR MÓVEL / DESKTOP LATERAL -->
+    <nav class="mobile-navbar fixed bottom-0 left-0 right-0 h-16 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 flex items-center justify-around z-50 md:flex-col md:h-full md:w-16">
+      
+      <button class="nav-mobile-btn flex flex-col items-center justify-center text-pink-500" data-tab="timeline">
+        <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="18" x2="20" y2="18"></line></svg>
+        <span class="text-[10px] font-medium" data-i18n="tab_timeline">Timeline</span>
+      </button>
+
+      <button class="nav-mobile-btn flex flex-col items-center justify-center text-gray-500" data-tab="salvos">
+        <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+        <span class="text-[10px] font-medium" data-i18n="tab_saved">Salvos</span>
+      </button>
+
+      <button class="nav-mobile-btn flex flex-col items-center justify-center text-gray-500" data-tab="feeds">
+        <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"><circle cx="5" cy="19" r="1"></circle></path></svg>
+        <span class="text-[10px] font-medium" data-i18n="tab_feeds">Feeds</span>
+      </button>
+
+      <button class="nav-mobile-btn flex flex-col items-center justify-center text-gray-500" data-tab="config">
+        <svg viewBox="0 0 24 24" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="text-[10px] font-medium" data-i18n="tab_options">Opções</span>
+      </button>
+
+    </nav>
+  </div>
+
+  <div id="toast" class="toast"></div>
+
+  <script>
+    // i18n Dictionary idêntico à sua extensão
+    const i18n = {
+      'pt-BR': {
+        tab_timeline: "Timeline", tab_saved: "Salvos", tab_feeds: "Feeds", tab_options: "Opções",
+        support: "Apoie", title_timeline: "Notícias", title_saved: "Salvos", title_feeds: "Meus Feeds",
+        title_options: "Opções", search_timeline: "Buscar notícias...", search_saved: "Buscar nos salvos...",
+        view_toggle: "Alternar Visualização", refresh: "Atualizar Feeds", clear_timeline: "Limpar Timeline",
+        summary_title: "Resumo", play_summary: "Gerar e ouvir resumo", rewind: "Retroceder 15s", forward: "Avançar 15s",
+        empty_timeline: "Nenhuma notícia encontrada nesta categoria.",
+        sort_recent: "Recentes", sort_oldest: "Antigos", empty_saved: "Nenhuma notícia salva.",
+        sort_az: "A > Z", placeholder_feed: "Ex: https://site.com.br/feed", btn_add: "Adicionar",
+        discover_feeds: "Buscar feeds na página", discover_empty: "Os feeds encontrados aparecerão aqui.",
+        opml_title: "Lista OPML", opml_import: "Importar", opml_export: "Exportar",
+        cfg_translate: "Traduzir notícias:", cfg_player: "Player de resumo:", cfg_summarize: "Resumir:",
+        opt_top10: "Últimas do dia", cfg_voice: "Voz do resumo:", opt_ai: "Voz por IA", opt_tts: "Voz do navegador",
+        cfg_llm: "Modelo LLM:", cfg_api: "Chave API:", cfg_range: "Mostrar notícias dos últimos:",
+        opt_1d: "1 dia", opt_3d: "3 dias", cfg_interval: "Verificar atualizações a cada:",
+        opt_15m: "15 minutos", opt_1h: "1 hora", cfg_lang: "Idioma:", cfg_theme: "Tema:",
+        opt_light: "Claro", opt_dark: "Escuro", cfg_unread: "Mostrar contador de não lidas:",
+        cfg_clear_faded: "Limpar desvanecidos ao sair:",
+        blacklist_title: "Filtro negativo (global)", blacklist_lbl: "Esconder notícias com as palavras:",
+        btn_clear: "limpar", filter_placeholder: "Adicionar filtro...", backup_title: "BACKUP TOTAL",
+        backup_import: "Importar", backup_export: "Exportar", danger_txt: "Apagar todos os dados armazenados (Feeds e Cache).",
+        btn_reset: "Resetar Extensão",
+        lang_pt: "Português", lang_en: "Inglês", lang_es: "Espanhol", lang_fr: "Francês", lang_zh: "Chinês",
+        js_checking: "Verificando...", js_added: "Feed adicionado!", js_exists: "O Feed já foi adicionado.",
+        js_invalid: "Formato de URL inválido.", js_not_feed: "A URL não é um feed válido.",
+        js_removed: "Feed removido.", js_wl_local: "Filtro positivo (local)", js_wl_lbl: "Exibir apenas notícias com as palavras:",
+        js_no_export: "Não há feeds para exportar.", js_imported: "feeds importados!",
+        js_no_new_feeds: "Nenhum feed novo encontrado.", js_err_opml: "Erro ao ler o arquivo OPML.",
+        js_updating: "Atualizando feeds...", js_updated: "Feeds updated!", js_no_news_sum: "Sem notícias para resumir.",
+        js_req_api: "Adicione a sua Chave API nas Opções.", js_no_new_sum: "Sem notícias novas.",
+        js_ai_limit: "Ops! Limite da IA atingido. Tente em instantes.", js_saved: "Notícia salva!",
+        js_removed_saved: "Removida dos salvos.", js_copied: "Link copiado!", js_sync: "Conteúdo sincronizado. Clique para ler no site.",
+        js_reset_conf: "Tem certeza que deseja apagar todos os feeds, notícias lidas, salvas e as configurações?",
+        js_reset_done: "Dados resetados.", js_err_page: "Erro ao ler a página (Acesse um site válido).", js_searching: "Buscando feeds...",
+        js_no_rss: "Nenhum feed RSS/XML encontrado nesta página.", js_read_later: "Ler mais tarde", js_saved_icon: "Salva",
+        js_share: "Compartilhar", js_mark_read: "Marcar como lido", js_remove: "Remover",
+        cat_geral: "Geral", new_category: "Nova Categoria", category_limit_hint: "É possível adicionar até 7 categorias.", btn_cancel: "Cancelar", btn_create: "Criar", delete_category_title: "Excluir Categoria?", btn_delete: "Excluir", delete_category_desc: "Feeds nesta categoria serão movidos para Geral."
+      },
+      'en': {
+        tab_timeline: "Timeline", tab_saved: "Saved", tab_feeds: "Feeds", tab_options: "Options",
+        support: "Support", title_timeline: "News", title_saved: "Saved", title_feeds: "My Feeds",
+        title_options: "Options", search_timeline: "Search news...", search_saved: "Search saved...",
+        view_toggle: "Toggle View", refresh: "Refresh Feeds", clear_timeline: "Clear Timeline",
+        summary_title: "Summary", play_summary: "Generate and listen to summary", rewind: "Rewind 15s", forward: "Forward 15s",
+        empty_timeline: "No news found in this category.",
+        sort_recent: "Recent", sort_oldest: "Oldest", empty_saved: "No saved news.",
+        sort_az: "A > Z", placeholder_feed: "Ex: https://site.com/feed", btn_add: "Add",
+        discover_feeds: "Find feeds on page", discover_empty: "Found feeds will appear here.",
+        opml_title: "OPML List", opml_import: "Import", opml_export: "Export",
+        cfg_translate: "Translate Timeline:", cfg_player: "Summary player:", cfg_summarize: "Summarize:",
+        opt_top10: "Latest of the day", cfg_voice: "Summary voice:", opt_ai: "AI Voice", opt_tts: "Browser Voice",
+        cfg_llm: "LLM Model:", cfg_api: "API Key:", cfg_range: "Show news from the last:",
+        opt_1d: "1 day", opt_3d: "3 days", cfg_interval: "Check for updates every:",
+        opt_15m: "15 minutes", opt_1h: "1 hour", cfg_lang: "Language:", cfg_theme: "Theme:",
+        opt_light: "Light", opt_dark: "Dark", cfg_unread: "Show unread counter:",
+        cfg_clear_faded: "Clear faded on exit:",
+        blacklist_title: "Negative filter (global)", blacklist_lbl: "Hide news with words:",
+        btn_clear: "clear", filter_placeholder: "Add filter...", backup_title: "FULL BACKUP",
+        backup_import: "Import", backup_export: "Export", danger_txt: "Delete all stored data (Feeds and Cache).",
+        btn_reset: "Reset Application",
+        lang_pt: "Portuguese", lang_en: "English", lang_es: "Spanish", lang_fr: "French", lang_zh: "Chinese",
+        js_checking: "Checking...", js_added: "Feed added!", js_exists: "Feed already added.",
+        js_invalid: "Invalid URL format.", js_not_feed: "URL is not a valid feed.",
+        js_removed: "Feed removed.", js_wl_local: "Positive filter (local)", js_wl_lbl: "Show only news with words:",
+        js_no_export: "No feeds to export.", js_imported: "feeds imported!",
+        js_no_new_feeds: "No new feeds found.", js_err_opml: "Error reading OPML file.",
+        js_updating: "Updating feeds...", js_updated: "Feeds updated!", js_no_news_sum: "No news to summarize.",
+        js_req_api: "Add your API Key in Options.", js_no_new_sum: "No new news.",
+        js_ai_limit: "Oops! AI limit reached. Try again in a moment.", js_saved: "News saved!",
+        js_removed_saved: "Removed from saved.", js_copied: "Link copied!", js_sync: "Synchronized content. Click to read on the site.",
+        js_reset_conf: "Are you sure you want to delete all feeds, read news, saved news and settings?",
+        js_reset_done: "Data reset.", js_err_page: "Error reading page (Please access a valid site).", js_searching: "Searching feeds...",
+        js_no_rss: "No RSS/XML feed found on this page.", js_read_later: "Read later", js_saved_icon: "Saved",
+        js_share: "Share", js_mark_read: "Mark as read", js_remove: "Remove",
+        cat_geral: "General", new_category: "New Category", category_limit_hint: "You can add up to 7 categories.", btn_cancel: "Cancel", btn_create: "Create", delete_category_title: "Delete Category?", btn_delete: "Delete", delete_category_desc: "Feeds in this category will be moved to General."
+      }
+    };
+
+    // Estado inicial padrão (usando localStorage)
+    let config = {
+      articleRange: 1,
+      theme: 'dark',
+      language: 'pt-BR',
+      showUnread: true,
+      clearFaded: true,
+      wordFilter: '',
+      showAi: true,
+      aiSummaryType: 'timeline',
+      audioType: 'browser_tts',
+      llmModel: 'gemini-2.5-flash',
+      apiKey: '',
+      viewMode: 'cards',
+      autoTranslate: false,
+      feedSortOrder: 'recent',
+      salvosSortOrder: 'recent',
+      ttsSpeed: 1.0,
+      feedCategories: {},
+      customCategories: ['Tecnologia', 'Ciência', 'Mundo']
+    };
+
+    let feeds = [
+      'https://g1.globo.com/rss/g1/',
+      'https://rss.nytimes.com/services/xml/rss/nyt/Technology.xml'
+    ];
+    let articles = [];
+    let savedArticles = [];
+    let readArticles = [];
+    let hiddenArticles = [];
+    let currentCategory = 'geral';
+
+    function loadLocalStorage() {
+      const localFeeds = localStorage.getItem('galactica_feeds');
+      const localConfig = localStorage.getItem('galactica_config');
+      const localArticles = localStorage.getItem('galactica_articles');
+      const localSaved = localStorage.getItem('galactica_saved');
+      const localRead = localStorage.getItem('galactica_read');
+      const localHidden = localStorage.getItem('galactica_hidden');
+
+      if (localFeeds) feeds = JSON.parse(localFeeds);
+      if (localConfig) config = { ...config, ...JSON.parse(localConfig) };
+      if (localArticles) articles = JSON.parse(localArticles);
+      if (localSaved) savedArticles = JSON.parse(localSaved);
+      if (localRead) readArticles = JSON.parse(localRead);
+      if (localHidden) hiddenArticles = JSON.parse(localHidden);
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem('galactica_feeds', JSON.stringify(feeds));
+      localStorage.setItem('galactica_config', JSON.stringify(config));
+      localStorage.setItem('galactica_articles', JSON.stringify(articles));
+      localStorage.setItem('galactica_saved', JSON.stringify(savedArticles));
+      localStorage.setItem('galactica_read', JSON.stringify(readArticles));
+      localStorage.setItem('galactica_hidden', JSON.stringify(hiddenArticles));
+    }
+
+    // Traduções utilitárias
+    function t(key) {
+      const lang = config.language || 'pt-BR';
+      return (i18n[lang] && i18n[lang][key]) ? i18n[lang][key] : i18n['en'][key];
+    }
+
+    function applyTranslations() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.getAttribute('data-i18n'));
+      });
+      document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        el.placeholder = t(el.getAttribute('data-i18n-placeholder'));
+      });
+    }
+
+    const tabContents = {
+      timeline: document.getElementById('timeline'),
+      salvos: document.getElementById('salvos'),
+      feeds: document.getElementById('feeds'),
+      config: document.getElementById('config')
+    };
+
+    document.querySelectorAll('.nav-mobile-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const targetTab = btn.getAttribute('data-tab');
+        
+        // Mudar classe ativa visualmente
+        document.querySelectorAll('.nav-mobile-btn').forEach(b => {
+          b.classList.remove('text-pink-500');
+          b.classList.add('text-gray-500');
+        });
+        btn.classList.remove('text-gray-500');
+        btn.classList.add('text-pink-500');
+
+        // Alternar visualização de telas
+        Object.keys(tabContents).forEach(key => {
+          if (key === targetTab) {
+            tabContents[key].classList.remove('hidden');
+            tabContents[key].classList.add('block');
+          } else {
+            tabContents[key].classList.remove('block');
+            tabContents[key].classList.add('hidden');
+          }
+        });
+
+        // Ocultar carrossel de categorias se não for timeline ou salvos
+        const categoryCarousel = document.getElementById('mobile-category-carousel');
+        if (targetTab === 'timeline' || targetTab === 'salvos') {
+          categoryCarousel.classList.remove('hidden');
+          categoryCarousel.classList.add('flex');
+        } else {
+          categoryCarousel.classList.remove('flex');
+          categoryCarousel.classList.add('hidden');
+        }
+      });
+    });
+
+    // Renderizar categorias no celular
+    function renderCategories() {
+      const carousel = document.getElementById('mobile-category-carousel');
+      carousel.innerHTML = '';
+
+      // Adiciona o Geral
+      const generalBtn = document.createElement('button');
+      generalBtn.className = `category-pill-btn ${currentCategory === 'geral' ? 'active' : ''}`;
+      generalBtn.textContent = t('cat_geral');
+      generalBtn.addEventListener('click', () => {
+        currentCategory = 'geral';
+        renderCategories();
+        renderTimeline();
+        renderSalvos();
+      });
+      carousel.appendChild(generalBtn);
+
+      // Adiciona as categorias customizadas
+      config.customCategories.forEach(cat => {
+        const catBtn = document.createElement('button');
+        catBtn.className = `category-pill-btn ${currentCategory === cat ? 'active' : ''}`;
+        catBtn.textContent = cat;
+        catBtn.addEventListener('click', () => {
+          currentCategory = cat;
+          renderCategories();
+          renderTimeline();
+          renderSalvos();
+        });
+        carousel.appendChild(catBtn);
+      });
+    }
+
+    async function fetchWithProxy(url) {
+      // Lista de estratégias de proxy altamente estáveis e redundantes
+      const strategies = [
+        // 1. CORSProxy.io (Distribuição global rápida na borda)
+        {
+          name: "CORSProxy.io",
+          fetchFn: async () => {
+            const res = await fetch(`https://corsproxy.io/?url=${encodeURIComponent(url)}`);
+            if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
+            return await res.text();
+          }
+        },
+        // 2. AllOrigins Wrapper JSON (A estratégia mais robusta para ambientes sandboxed/iframes)
+        {
+          name: "AllOrigins JSON Wrapper",
+          fetchFn: async () => {
+            const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+            if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
+            const data = await res.json();
+            if (!data || !data.contents) throw new Error("Resposta de dados vazia");
+            return data.contents;
+          }
+        },
+        // 3. CodeTabs (Extremamente rápido para sites de tecnologia)
+        {
+          name: "CodeTabs Proxy",
+          fetchFn: async () => {
+            const res = await fetch(`https://api.codetabs.com/v1/proxy/?quest=${encodeURIComponent(url)}`);
+            if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
+            return await res.text();
+          }
+        },
+        // 4. Corsfix Free Tier
+        {
+          name: "Corsfix",
+          fetchFn: async () => {
+            const res = await fetch(`https://proxy.corsfix.com/?${url}`);
+            if (!res.ok) throw new Error(`Erro HTTP ${res.status}`);
+            return await res.text();
+          }
+        }
+      ];
+
+      for (let i = 0; i < strategies.length; i++) {
+        const strategy = strategies[i];
+        try {
+          console.log(`[CORS Proxy] Tentando estratégia ${i + 1}/${strategies.length} (${strategy.name}) para: ${url}`);
+          const text = await strategy.fetchFn();
+          
+          // Validação flexível para garantir que recebemos um Feed estruturado antes de aceitar
+          if (text && (
+            text.includes('<rss') || 
+            text.includes('<feed') || 
+            text.includes('<xml') || 
+            text.includes('<rdf') || 
+            text.includes('<channel') ||
+            text.includes('<item') ||
+            text.includes('<entry')
+          )) {
+            console.log(`[CORS Proxy] Sucesso ao buscar conteúdo usando: ${strategy.name}`);
+            return text;
+          }
+          console.warn(`[CORS Proxy] ${strategy.name} respondeu, mas o conteúdo não possui formato de Feed XML estruturado.`);
+        } catch (err) {
+          console.warn(`[CORS Proxy] Falha na estratégia ${strategy.name}:`, err.message || err);
+        }
+      }
+      throw new Error("Todos os proxies de CORS falharam para a URL fornecida.");
+    }
+
+    async function fetchFeeds() {
+      if (feeds.length === 0) return showToast(t('empty_timeline'));
+      
+      showToast(t('js_updating'));
+      renderSkeletons();
+
+      let fetchedArticles = [];
+      
+      // Buscaremos usando proxy com tratamento dinâmico de erros em esteira
+      const promises = feeds.map(async (url) => {
+        try {
+          const xmlString = await fetchWithProxy(url);
+          return parseRSS(xmlString, url);
+        } catch (e) {
+          console.error("Erro persistentente ao carregar o feed (todos os proxies falharam):", url, e);
+          return [];
+        }
+      });
+
+      const results = await Promise.all(promises);
+      fetchedArticles = results.flat();
+      fetchedArticles.sort((a, b) => b.timestamp - a.timestamp);
+
+      if (fetchedArticles.length > 0) {
+        articles = fetchedArticles;
+        saveToLocalStorage();
+        showToast(t('js_updated'));
+      }
+      renderTimeline();
+    }
+
+    function parseRSS(xmlText, feedUrl) {
+      const parser = new DOMParser();
+      const cleanXmlText = xmlText.replace(/^[\s\S]*?(<\?xml|<rss|<feed|<rdf)/i, '$1');
+      const xml = parser.parseFromString(cleanXmlText, "text/xml");
+      const items = xml.querySelectorAll("item, entry");
+      const siteTitle = xml.querySelector("channel > title, feed > title")?.textContent.trim() || new URL(feedUrl).hostname;
+      const parsed = [];
+
+      items.forEach(item => {
+        const title = item.querySelector("title")?.textContent.trim() || "Sem título";
+        const link = item.querySelector("link")?.textContent?.trim() || item.querySelector("link")?.getAttribute("href") || "#";
+        const description = item.querySelector("description, summary, content")?.textContent || "";
+        
+        let imageUrl = null;
+        // Tenta pegar imagem de tags multimídia ou da descrição
+        const media = item.getElementsByTagName("media:content")[0] || item.getElementsByTagName("media:thumbnail")[0];
+        if (media) imageUrl = media.getAttribute("url");
+        if (!imageUrl) {
+          const match = description.match(/<img[^>]+src="([^">]+)"/);
+          if (match) imageUrl = match[1];
+        }
+
+        const pubDateStr = item.querySelector("pubDate, published, updated")?.textContent;
+        const timestamp = pubDateStr ? new Date(pubDateStr).getTime() : Date.now();
+
+        parsed.push({
+          title,
+          link,
+          summary: description.replace(/<[^>]*>/g, '').substring(0, 150) + "...",
+          imageUrl,
+          siteTitle,
+          timestamp,
+          feedUrl
+        });
+      });
+      return parsed;
+    }
+
+    function renderSkeletons() {
+      const list = document.getElementById('timeline-list');
+      list.innerHTML = '';
+      for (let i = 0; i < 4; i++) {
+        const item = document.createElement('div');
+        item.className = 'p-4 bg-white dark:bg-zinc-800 rounded-2xl flex flex-col gap-2 border border-gray-200 dark:border-zinc-700';
+        item.innerHTML = `
+          <div class="skeleton h-32 w-full rounded-xl"></div>
+          <div class="skeleton h-6 w-3/4"></div>
+          <div class="skeleton h-4 w-full"></div>
+        `;
+        list.appendChild(item);
+      }
+    }
+
+    function renderTimeline() {
+      const list = document.getElementById('timeline-list');
+      list.innerHTML = '';
+
+      const maxAgeMs = config.articleRange * 24 * 60 * 60 * 1000;
+      const filtered = articles.filter(art => {
+        if (Date.now() - art.timestamp > maxAgeMs) return false;
+        if (hiddenArticles.includes(art.link)) return false;
+
+        // Filtro por Categoria
+        if (currentCategory !== 'geral') {
+          const feedCat = config.feedCategories[art.feedUrl] || 'geral';
+          if (feedCat !== currentCategory) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = `<p class="empty-state text-center text-gray-500 py-8">${t('empty_timeline')}</p>`;
+        return;
+      }
+
+      filtered.forEach(art => {
+        const card = document.createElement('div');
+        card.className = `card relative ${readArticles.includes(art.link) ? 'faded' : ''}`;
+        
+        let imgHTML = art.imageUrl ? `
+          <div class="card-image-wrapper">
+            <img class="card-image" src="${art.imageUrl}" alt="" onerror="this.parentElement.style.display='none'">
+          </div>
+        ` : '';
+
+        const isSaved = savedArticles.some(s => s.link === art.link);
+
+        card.innerHTML = `
+          ${imgHTML}
+          <div class="p-4">
+            <div class="flex items-center gap-2 mb-2 text-xs text-gray-400">
+              <span class="font-bold text-pink-500">${art.siteTitle}</span>
+              <span>•</span>
+              <span>${formatDate(art.timestamp)}</span>
+            </div>
+            <h3 class="text-base font-bold mb-2 text-gray-900 dark:text-white leading-snug">
+              <a href="${art.link}" target="_blank" class="hover:text-pink-500">${art.title}</a>
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400 mb-4 card-summary">${art.summary}</p>
+            <div class="flex justify-end gap-3 border-t border-gray-100 dark:border-zinc-700/50 pt-2">
+              <button class="btn-save p-2 rounded-lg text-gray-500 hover:text-pink-500">
+                <svg viewBox="0 0 24 24" class="w-5 h-5" fill="${isSaved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+              </button>
+              <button class="btn-hide p-2 rounded-lg text-gray-500 hover:text-red-500">
+                <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        `;
+
+        // Manipulação de cliques no card
+        card.querySelector('.btn-save').addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSave(art);
+        });
+
+        card.querySelector('.btn-hide').addEventListener('click', (e) => {
+          e.stopPropagation();
+          hideArticle(art.link);
+        });
+
+        card.addEventListener('click', () => {
+          if (!readArticles.includes(art.link)) {
+            readArticles.push(art.link);
+            card.classList.add('faded');
+            saveToLocalStorage();
+          }
+          window.open(art.link, '_blank');
+        });
+
+        list.appendChild(card);
+      });
+    }
+
+    function toggleSave(art) {
+      const idx = savedArticles.findIndex(s => s.link === art.link);
+      if (idx === -1) {
+        savedArticles.push(art);
+        showToast(t('js_saved'));
+      } else {
+        savedArticles.splice(idx, 1);
+        showToast(t('js_removed_saved'));
+      }
+      saveToLocalStorage();
+      renderTimeline();
+      renderSalvos();
+    }
+
+    function hideArticle(link) {
+      hiddenArticles.push(link);
+      saveToLocalStorage();
+      renderTimeline();
+    }
+
+    function renderSalvos() {
+      const list = document.getElementById('salvos-list');
+      list.innerHTML = '';
+
+      if (savedArticles.length === 0) {
+        list.innerHTML = `<p class="empty-state text-center text-gray-500 py-8">${t('empty_saved')}</p>`;
+        return;
+      }
+
+      savedArticles.forEach(art => {
+        const card = document.createElement('div');
+        card.className = 'card relative';
+        
+        card.innerHTML = `
+          <div class="p-4">
+            <div class="text-xs text-pink-500 font-bold mb-1">${art.siteTitle}</div>
+            <h3 class="text-sm font-bold text-gray-900 dark:text-white leading-snug">
+              <a href="${art.link}" target="_blank">${art.title}</a>
+            </h3>
+            <div class="flex justify-end gap-2 mt-2">
+              <button class="btn-remove-save p-1 text-red-500 hover:bg-red-50 dark:hover:bg-zinc-700 rounded-lg">
+                <svg viewBox="0 0 24 24" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        `;
+
+        card.querySelector('.btn-remove-save').addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleSave(art);
+        });
+
+        list.appendChild(card);
+      });
+    }
+
+    let currentAudio = null;
+    let currentUtterance = null;
+    let isGeneratingAudio = false;
+
+    const btnPlaySummary = document.getElementById('btn-play-summary');
+    const playerProgress = document.getElementById('player-progress');
+
+    btnPlaySummary.addEventListener('click', async () => {
+      if (currentAudio) {
+        if (currentAudio.paused) { currentAudio.play(); setPauseIcon(); } 
+        else { currentAudio.pause(); setPlayIcon(); }
+        return;
+      }
+      if (currentUtterance) {
+        if (speechSynthesis.paused) { speechSynthesis.resume(); setPauseIcon(); }
+        else { speechSynthesis.pause(); setPlayIcon(); }
+        return;
+      }
+
+      // Se nada está tocando, gerar novo áudio de resumo
+      let textToSpeak = "Gerando resumo com as últimas notícias.";
+      
+      const pool = config.aiSummaryType === 'saved' ? savedArticles : articles;
+      if (pool.length === 0) return showToast(t('js_no_news_sum'));
+
+      showToast("Preparando roteiro com Inteligência Artificial...");
+      isGeneratingAudio = true;
+      setLoadingButton(true);
+
+      const apiKey = config.apiKey.trim();
+      
+      if (config.audioType === 'ai_voice' && apiKey) {
+        // Integração direta com a API da Gemini (igual à sua extensão)
+        try {
+          const newsListText = pool.slice(0, 10).map((a, i) => `[${i + 1}] ${a.siteTitle}: ${a.title}`).join('\n');
+          const prompt = `Aja como o locutor do 'Galactica RSS'. Escreva um roteiro corrido e fluido em português do Brasil sem usar markdown ou títulos, cobrindo as seguintes notícias:\n${newsListText}`;
+          
+          const payload = {
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: { prebuiltVoiceConfig: { voiceName: "Aoede" } }
+              }
+            },
+            model: "gemini-2.5-flash-preview-tts"
+          };
+
+          const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${apiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          
+          const result = await response.json();
+          const base64Audio = result?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
+          
+          if (base64Audio) {
+            const blob = pcmToWav(base64Audio, 24000);
+            const audioUrl = URL.createObjectURL(blob);
+            currentAudio = new Audio(audioUrl);
+            currentAudio.playbackRate = config.ttsSpeed || 1.0;
+            
+            currentAudio.addEventListener('timeupdate', () => {
+              playerProgress.style.width = `${(currentAudio.currentTime / currentAudio.duration) * 100}%`;
+            });
+            currentAudio.addEventListener('ended', () => {
+              resetPlayer();
+            });
+            
+            currentAudio.play();
+            setPauseIcon();
+          }
+        } catch (err) {
+          console.error(err);
+          showToast("Erro de limite da API ou conexão. Usando voz local...");
+          speakFallback(pool);
+        } finally {
+          setLoadingButton(false);
+          isGeneratingAudio = false;
+        }
+      } else {
+        // Voz local do navegador (Text-To-Speech padrão sem custo ou chave de API)
+        speakFallback(pool);
+        setLoadingButton(false);
+        isGeneratingAudio = false;
+      }
+    });
+
+    function speakFallback(pool) {
+      const newsToSpeak = pool.slice(0, 5).map(a => `${a.siteTitle}: ${a.title}`).join('. ');
+      const text = `Bem-vindo ao giro de notícias Galactica R S S. ` + newsToSpeak;
+      
+      speechSynthesis.cancel();
+      currentUtterance = new SpeechSynthesisUtterance(text);
+      currentUtterance.rate = config.ttsSpeed || 1.0;
+      currentUtterance.lang = config.language || 'pt-BR';
+      
+      currentUtterance.onend = () => {
+        resetPlayer();
+      };
+      
+      speechSynthesis.speak(currentUtterance);
+      setPauseIcon();
+    }
+
+    function resetPlayer() {
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+      if (speechSynthesis.speaking) { speechSynthesis.cancel(); }
+      currentUtterance = null;
+      playerProgress.style.width = '0%';
+      setPlayIcon();
+    }
+
+    function setPauseIcon() {
+      btnPlaySummary.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>`;
+    }
+
+    function setPlayIcon() {
+      btnPlaySummary.innerHTML = `<svg viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>`;
+    }
+
+    function setLoadingButton(loading) {
+      if (loading) {
+        btnPlaySummary.innerHTML = `<span class="inline-block border-2 border-white border-t-transparent rounded-full w-4 h-4 animate-spin"></span>`;
+      }
+    }
+
+    function pcmToWav(base64Pcm, sampleRate) {
+      const binaryString = atob(base64Pcm);
+      const pcmData = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) { pcmData[i] = binaryString.charCodeAt(i); }
+      const dataSize = pcmData.length;
+      const buffer = new ArrayBuffer(44 + dataSize);
+      const view = new DataView(buffer);
+      const writeString = (offset, string) => { for (let i = 0; i < string.length; i++) { view.setUint8(offset + i, string.charCodeAt(i)); } };
+      writeString(0, 'RIFF'); view.setUint32(4, 36 + dataSize, true); writeString(8, 'WAVE'); writeString(12, 'fmt ');
+      view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true); view.setUint32(24, sampleRate, true);
+      view.setUint32(28, sampleRate * 2, true); view.setUint16(32, 2, true); view.setUint16(34, 16, true);
+      writeString(36, 'data'); view.setUint32(40, dataSize, true); new Uint8Array(buffer, 44).set(pcmData);
+      return new Blob([buffer], { type: 'audio/wav' });
+    }
+
+    document.getElementById('btn-refresh').addEventListener('click', fetchFeeds);
+    
+    document.getElementById('btn-add-feed').addEventListener('click', () => {
+      const input = document.getElementById('feed-input');
+      const val = input.value.trim();
+      if (val && !feeds.includes(val)) {
+        feeds.push(val);
+        input.value = '';
+        saveToLocalStorage();
+        fetchFeeds();
+        renderFeedsList();
+      }
+    });
+
+    function renderFeedsList() {
+      const list = document.getElementById('feed-list');
+      list.innerHTML = '';
+      feeds.forEach((url, index) => {
+        const li = document.createElement('li');
+        li.className = 'p-3 bg-white dark:bg-zinc-800 rounded-xl flex justify-between items-center text-xs border border-gray-100 dark:border-zinc-700/50';
+        li.innerHTML = `
+          <span class="truncate pr-4">${url}</span>
+          <button class="text-red-500 hover:bg-red-50 p-1 rounded">Excluir</button>
+        `;
+        li.querySelector('button').addEventListener('click', () => {
+          feeds.splice(index, 1);
+          saveToLocalStorage();
+          renderFeedsList();
+          fetchFeeds();
+        });
+        list.appendChild(li);
+      });
+    }
+
+    // Alternar Visualizações (Grade, Lista, etc.)
+    const btnViewToggleTimeline = document.getElementById('btn-view-toggle-timeline');
+    btnViewToggleTimeline.addEventListener('click', () => {
+      const currentMode = config.viewMode;
+      const listContainer = document.getElementById('timeline-list');
+      if (currentMode === 'cards') {
+        config.viewMode = 'list';
+        listContainer.className = 'flex flex-col gap-3 list-view';
+      } else if (currentMode === 'list') {
+        config.viewMode = 'title-only';
+        listContainer.className = 'flex flex-col gap-3 title-only-view';
+      } else {
+        config.viewMode = 'cards';
+        listContainer.className = 'flex flex-col gap-3';
+      }
+      saveToLocalStorage();
+      renderTimeline();
+    });
+
+    // Reset total da extensão/App
+    document.getElementById('btn-reset-data').addEventListener('click', () => {
+      if (confirm(t('js_reset_conf'))) {
+        localStorage.clear();
+        location.reload();
+      }
+    });
+
+    // Temas e Configurações reativas
+    const themeSelect = document.getElementById('config-theme');
+    themeSelect.addEventListener('change', (e) => {
+      config.theme = e.target.value;
+      applyTheme(config.theme);
+      saveToLocalStorage();
+    });
+
+    function applyTheme(theme) {
+      document.body.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    }
+
+    // Configurando Chave API reativa
+    const apiKeyInput = document.getElementById('config-api-key');
+    apiKeyInput.addEventListener('input', (e) => {
+      config.apiKey = e.target.value;
+      saveToLocalStorage();
+    });
+
+    // Idioma
+    const langSelect = document.getElementById('config-language');
+    langSelect.addEventListener('change', (e) => {
+      config.language = e.target.value;
+      applyTranslations();
+      renderCategories();
+      saveToLocalStorage();
+    });
+
+    // Toast de notificações
+    let toastTimeout;
+    function showToast(msg) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('visible');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('visible');
+      }, 3000);
+    }
+
+    function formatDate(timestamp) {
+      const diffMins = Math.floor((Date.now() - timestamp) / 60000);
+      if (diffMins < 60) return `${diffMins <= 0 ? 1 : diffMins} min`;
+      const diffHours = Math.floor(diffMins / 60);
+      if (diffHours < 24) return `${diffHours} h`;
+      const diffDays = Math.floor(diffHours / 24);
+      return `${diffDays} ${diffDays === 1 ? 'dia' : 'dias'}`;
+    }
+
+    // Inicialização da página
+    window.onload = function() {
+      loadLocalStorage();
+      applyTheme(config.theme);
+      applyTranslations();
+      renderCategories();
+      renderFeedsList();
+      
+      // Seta valores nos inputs das opções
+      themeSelect.value = config.theme;
+      langSelect.value = config.language;
+      apiKeyInput.value = config.apiKey;
+      document.getElementById('config-summary-type').value = config.aiSummaryType;
+      document.getElementById('config-audio-type').value = config.audioType;
+      document.getElementById('config-range').value = config.articleRange;
+
+      if (articles.length === 0) {
+        fetchFeeds();
+      } else {
+        renderTimeline();
+      }
+      renderSalvos();
+    };
+
+  </script>
+</body>
+</html>
