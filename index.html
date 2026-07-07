@@ -189,7 +189,7 @@
     }
 
     @keyframes liquid-wave {
-      0% { transform: translateX(-50%) rotate(0deg); }
+      0 { transform: translateX(-50%) rotate(0deg); }
       100% { transform: translateX(-50%) rotate(360deg); }
     }
     .control-btn.play-btn {
@@ -285,13 +285,13 @@
         <div class="flex justify-between items-center mb-4">
           <h2 class="text-xl font-bold"><span data-i18n="title_timeline">Notícias</span> <span id="unread-count" class="text-sm font-normal text-gray-500"></span></h2>
           <div class="flex items-center gap-2">
-            <button id="btn-view-toggle-timeline" class="p-2 border border-transparent rounded-lg hover:bg-gray-200">
+            <button id="btn-view-toggle-timeline" class="p-2 border border-transparent rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800">
               <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
             </button>
-            <button id="btn-refresh" class="p-2 border border-transparent rounded-lg hover:bg-gray-200">
+            <button id="btn-refresh" class="p-2 border border-transparent rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800">
               <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
             </button>
-            <button id="btn-clear" class="p-2 border border-transparent rounded-lg hover:bg-gray-200">
+            <button id="btn-clear" class="p-2 border border-transparent rounded-lg hover:bg-zinc-200 dark:hover:bg-zinc-800">
               <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
             </button>
           </div>
@@ -451,6 +451,17 @@
 
           <hr class="border-gray-300 dark:border-gray-700 my-2">
 
+          <div class="flex justify-between items-center py-2">
+            <span class="text-xs font-bold text-gray-500 dark:text-gray-400 tracking-wider uppercase" data-i18n="backup_title">Backup Total</span>
+            <div class="flex gap-2">
+              <label for="input-import-backup" class="cursor-pointer bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors text-pink-500" data-i18n="backup_import">Importar</label>
+              <input type="file" id="input-import-backup" accept=".json" class="hidden">
+              <button id="btn-export-backup" class="bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-xs font-bold px-3 py-2 rounded-xl transition-colors text-pink-500" data-i18n="backup_export">Exportar</button>
+            </div>
+          </div>
+
+          <hr class="border-gray-300 dark:border-gray-700 my-2">
+
           <div class="p-4 bg-red-100/50 dark:bg-red-950/20 rounded-2xl flex flex-col gap-2">
             <p class="text-xs text-gray-500" data-i18n="danger_txt">Apagar todos os dados armazenados (Feeds e Cache).</p>
             <button id="btn-reset-data" class="w-full py-2 bg-pink-500 text-white rounded-xl text-sm font-semibold hover:bg-pink-600" data-i18n="btn_reset">Resetar Aplicativo</button>
@@ -489,7 +500,7 @@
   <div id="toast" class="toast"></div>
 
   <script>
-    // i18n Dictionary idêntico à sua extensão
+    // i18n Dictionary idêntico à sua extensão para compatibilidade 100%
     const i18n = {
       'pt-BR': {
         tab_timeline: "Timeline", tab_saved: "Salvos", tab_feeds: "Feeds", tab_options: "Opções",
@@ -510,16 +521,16 @@
         opt_light: "Claro", opt_dark: "Escuro", cfg_unread: "Mostrar contador de não lidas:",
         cfg_clear_faded: "Limpar desvanecidos ao sair:",
         blacklist_title: "Filtro negativo (global)", blacklist_lbl: "Esconder notícias com as palavras:",
-        btn_clear: "limpar", filter_placeholder: "Adicionar filtro...", backup_title: "BACKUP TOTAL",
+        btn_clear: "limpar", filter_placeholder: "Adicionar filtro...", backup_title: "Backup Total",
         backup_import: "Importar", backup_export: "Exportar", danger_txt: "Apagar todos os dados armazenados (Feeds e Cache).",
-        btn_reset: "Resetar Extensão",
+        btn_reset: "Resetar Aplicativo",
         lang_pt: "Português", lang_en: "Inglês", lang_es: "Espanhol", lang_fr: "Francês", lang_zh: "Chinês",
         js_checking: "Verificando...", js_added: "Feed adicionado!", js_exists: "O Feed já foi adicionado.",
         js_invalid: "Formato de URL inválido.", js_not_feed: "A URL não é um feed válido.",
         js_removed: "Feed removido.", js_wl_local: "Filtro positivo (local)", js_wl_lbl: "Exibir apenas notícias com as palavras:",
         js_no_export: "Não há feeds para exportar.", js_imported: "feeds importados!",
         js_no_new_feeds: "Nenhum feed novo encontrado.", js_err_opml: "Erro ao ler o arquivo OPML.",
-        js_updating: "Atualizando feeds...", js_updated: "Feeds updated!", js_no_news_sum: "Sem notícias para resumir.",
+        js_updating: "Atualizando feeds...", js_updated: "Feeds atualizados!", js_no_news_sum: "Sem notícias para resumir.",
         js_req_api: "Adicione a sua Chave API nas Opções.", js_no_new_sum: "Sem notícias novas.",
         js_ai_limit: "Ops! Limite da IA atingido. Tente em instantes.", js_saved: "Notícia salva!",
         js_removed_saved: "Removida dos salvos.", js_copied: "Link copiado!", js_sync: "Conteúdo sincronizado. Clique para ler no site.",
@@ -548,7 +559,7 @@
         opt_light: "Light", opt_dark: "Dark", cfg_unread: "Show unread counter:",
         cfg_clear_faded: "Clear faded on exit:",
         blacklist_title: "Negative filter (global)", blacklist_lbl: "Hide news with words:",
-        btn_clear: "clear", filter_placeholder: "Add filter...", backup_title: "FULL BACKUP",
+        btn_clear: "clear", filter_placeholder: "Add filter...", backup_title: "Backup All",
         backup_import: "Import", backup_export: "Export", danger_txt: "Delete all stored data (Feeds and Cache).",
         btn_reset: "Reset Application",
         lang_pt: "Portuguese", lang_en: "English", lang_es: "Spanish", lang_fr: "French", lang_zh: "Chinese",
@@ -701,24 +712,24 @@
       carousel.appendChild(generalBtn);
 
       // Adiciona as categorias customizadas
-      config.customCategories.forEach(cat => {
-        const catBtn = document.createElement('button');
-        catBtn.className = `category-pill-btn ${currentCategory === cat ? 'active' : ''}`;
-        catBtn.textContent = cat;
-        catBtn.addEventListener('click', () => {
-          currentCategory = cat;
-          renderCategories();
-          renderTimeline();
-          renderSalvos();
+      if (config.customCategories) {
+        config.customCategories.forEach(cat => {
+          const catBtn = document.createElement('button');
+          catBtn.className = `category-pill-btn ${currentCategory === cat ? 'active' : ''}`;
+          catBtn.textContent = cat;
+          catBtn.addEventListener('click', () => {
+            currentCategory = cat;
+            renderCategories();
+            renderTimeline();
+            renderSalvos();
+          });
+          carousel.appendChild(catBtn);
         });
-        carousel.appendChild(catBtn);
-      });
+      }
     }
 
     async function fetchWithProxy(url) {
-      // Lista de estratégias de proxy altamente estáveis e redundantes
       const strategies = [
-        // 1. CORSProxy.io (Distribuição global rápida na borda)
         {
           name: "CORSProxy.io",
           fetchFn: async () => {
@@ -727,7 +738,6 @@
             return await res.text();
           }
         },
-        // 2. AllOrigins Wrapper JSON (A estratégia mais robusta para ambientes sandboxed/iframes)
         {
           name: "AllOrigins JSON Wrapper",
           fetchFn: async () => {
@@ -738,7 +748,6 @@
             return data.contents;
           }
         },
-        // 3. CodeTabs (Extremamente rápido para sites de tecnologia)
         {
           name: "CodeTabs Proxy",
           fetchFn: async () => {
@@ -747,7 +756,6 @@
             return await res.text();
           }
         },
-        // 4. Corsfix Free Tier
         {
           name: "Corsfix",
           fetchFn: async () => {
@@ -764,7 +772,6 @@
           console.log(`[CORS Proxy] Tentando estratégia ${i + 1}/${strategies.length} (${strategy.name}) para: ${url}`);
           const text = await strategy.fetchFn();
           
-          // Validação flexível para garantir que recebemos um Feed estruturado antes de aceitar
           if (text && (
             text.includes('<rss') || 
             text.includes('<feed') || 
@@ -777,7 +784,6 @@
             console.log(`[CORS Proxy] Sucesso ao buscar conteúdo usando: ${strategy.name}`);
             return text;
           }
-          console.warn(`[CORS Proxy] ${strategy.name} respondeu, mas o conteúdo não possui formato de Feed XML estruturado.`);
         } catch (err) {
           console.warn(`[CORS Proxy] Falha na estratégia ${strategy.name}:`, err.message || err);
         }
@@ -792,8 +798,6 @@
       renderSkeletons();
 
       let fetchedArticles = [];
-      
-      // Buscaremos usando proxy com tratamento dinâmico de erros em esteira
       const promises = feeds.map(async (url) => {
         try {
           const xmlString = await fetchWithProxy(url);
@@ -830,7 +834,6 @@
         const description = item.querySelector("description, summary, content")?.textContent || "";
         
         let imageUrl = null;
-        // Tenta pegar imagem de tags multimídia ou da descrição
         const media = item.getElementsByTagName("media:content")[0] || item.getElementsByTagName("media:thumbnail")[0];
         if (media) imageUrl = media.getAttribute("url");
         if (!imageUrl) {
@@ -926,7 +929,6 @@
           </div>
         `;
 
-        // Manipulação de cliques no card
         card.querySelector('.btn-save').addEventListener('click', (e) => {
           e.stopPropagation();
           toggleSave(art);
@@ -1025,9 +1027,6 @@
         return;
       }
 
-      // Se nada está tocando, gerar novo áudio de resumo
-      let textToSpeak = "Gerando resumo com as últimas notícias.";
-      
       const pool = config.aiSummaryType === 'saved' ? savedArticles : articles;
       if (pool.length === 0) return showToast(t('js_no_news_sum'));
 
@@ -1038,7 +1037,6 @@
       const apiKey = config.apiKey.trim();
       
       if (config.audioType === 'ai_voice' && apiKey) {
-        // Integração direta com a API da Gemini (igual à sua extensão)
         try {
           const newsListText = pool.slice(0, 10).map((a, i) => `[${i + 1}] ${a.siteTitle}: ${a.title}`).join('\n');
           const prompt = `Aja como o locutor do 'Galactica RSS'. Escreva um roteiro corrido e fluido em português do Brasil sem usar markdown ou títulos, cobrindo as seguintes notícias:\n${newsListText}`;
@@ -1088,7 +1086,6 @@
           isGeneratingAudio = false;
         }
       } else {
-        // Voz local do navegador (Text-To-Speech padrão sem custo ou chave de API)
         speakFallback(pool);
         setLoadingButton(false);
         isGeneratingAudio = false;
@@ -1243,6 +1240,130 @@
       saveToLocalStorage();
     });
 
+    // HANDLERS DO BACKUP TOTAL (Compatibilidade cruzada PWA <-> Computador)
+    const btnExportBackup = document.getElementById('btn-export-backup');
+    const inputImportBackup = document.getElementById('input-import-backup');
+
+    if (btnExportBackup) {
+      btnExportBackup.addEventListener('click', () => {
+        const backupData = {
+          feeds: feeds,
+          config: config,
+          articles: articles,
+          savedArticles: savedArticles,
+          readArticles: readArticles,
+          hiddenArticles: hiddenArticles
+        };
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const urlObj = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = urlObj;
+        a.download = `galacticarss_pwa_backup_${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(urlObj);
+        showToast(config.language === 'pt-BR' ? 'Backup Exportado!' : 'Backup Exported!');
+      });
+    }
+
+    if (inputImportBackup) {
+      inputImportBackup.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          try {
+            const data = JSON.parse(event.target.result);
+            
+            // Unificação e Normalização de Configurações
+            if (data.config) {
+              config = { ...config, ...data.config };
+            }
+            if (data.feeds) feeds = data.feeds;
+            if (data.articles) articles = data.articles;
+            
+            // Trata chaves da extensão convencionais
+            if (data.savedArticles) savedArticles = data.savedArticles;
+            else if (data.saved) savedArticles = data.saved;
+
+            if (data.readArticles) readArticles = data.readArticles;
+            else if (data.read) readArticles = data.read;
+
+            if (data.hiddenArticles) hiddenArticles = data.hiddenArticles;
+            else if (data.hidden) hiddenArticles = data.hidden;
+
+            saveToLocalStorage();
+            applyTheme(config.theme);
+            applyTranslations();
+            renderCategories();
+            renderFeedsList();
+            renderTimeline();
+            renderSalvos();
+
+            // Atualiza fisicamente as telas e campos das Opções para corresponderem aos novos dados
+            themeSelect.value = config.theme;
+            langSelect.value = config.language;
+            apiKeyInput.value = config.apiKey;
+            document.getElementById('config-summary-type').value = config.aiSummaryType;
+            document.getElementById('config-audio-type').value = config.audioType;
+            document.getElementById('config-range').value = config.articleRange;
+            document.getElementById('config-auto-translate').checked = config.autoTranslate || false;
+            document.getElementById('config-show-ai').checked = config.showAi !== false;
+            document.getElementById('config-llm-model').value = config.llmModel || 'gemini-2.5-flash';
+            document.getElementById('config-unread').checked = config.showUnread || false;
+
+            showToast(config.language === 'pt-BR' ? 'Backup Importado!' : 'Backup Imported!');
+          } catch (err) {
+            showToast(config.language === 'pt-BR' ? 'Erro ao ler arquivo de backup.' : 'Error reading backup file.');
+          }
+        };
+        reader.readAsText(file);
+        e.target.value = '';
+      });
+    }
+
+    // Vincular todos os seletores extras de Opções para salvar em tempo real
+    document.getElementById('config-auto-translate').addEventListener('change', (e) => {
+      config.autoTranslate = e.target.checked;
+      saveToLocalStorage();
+      renderTimeline();
+    });
+
+    document.getElementById('config-show-ai').addEventListener('change', (e) => {
+      config.showAi = e.target.checked;
+      document.getElementById('ai-summary-container').style.display = config.showAi ? 'block' : 'none';
+      saveToLocalStorage();
+    });
+
+    document.getElementById('config-summary-type').addEventListener('change', (e) => {
+      config.aiSummaryType = e.target.value;
+      saveToLocalStorage();
+    });
+
+    document.getElementById('config-audio-type').addEventListener('change', (e) => {
+      config.audioType = e.target.value;
+      saveToLocalStorage();
+      resetPlayer();
+    });
+
+    document.getElementById('config-llm-model').addEventListener('change', (e) => {
+      config.llmModel = e.target.value;
+      saveToLocalStorage();
+    });
+
+    document.getElementById('config-range').addEventListener('change', (e) => {
+      config.articleRange = parseInt(e.target.value);
+      saveToLocalStorage();
+      renderTimeline();
+    });
+
+    document.getElementById('config-unread').addEventListener('change', (e) => {
+      config.showUnread = e.target.checked;
+      saveToLocalStorage();
+      renderTimeline();
+    });
+
     // Toast de notificações
     let toastTimeout;
     function showToast(msg) {
@@ -1279,6 +1400,10 @@
       document.getElementById('config-summary-type').value = config.aiSummaryType;
       document.getElementById('config-audio-type').value = config.audioType;
       document.getElementById('config-range').value = config.articleRange;
+      document.getElementById('config-auto-translate').checked = config.autoTranslate || false;
+      document.getElementById('config-show-ai').checked = config.showAi !== false;
+      document.getElementById('config-llm-model').value = config.llmModel || 'gemini-2.5-flash';
+      document.getElementById('config-unread').checked = config.showUnread || false;
 
       if (articles.length === 0) {
         fetchFeeds();
