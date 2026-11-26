@@ -2538,7 +2538,6 @@ body[data-theme="dark"] .tag-remove {
     <div id="auth-form-logged-in" class="auth-body hidden">
       <p class="user-status-txt"><span data-i18n="logged_as">Conectado como:</span> <strong id="user-email-display" style="word-break: break-all;"></strong></p>
       <div class="auth-actions-row">
-        <button id="btn-fb-sync-now" class="btn-primary" data-i18n="btn_sync_now">Sincronizar Agora</button>
         <button id="btn-fb-logout" class="btn-danger" data-i18n="btn_logout">Sair</button>
       </div>
     </div>
@@ -3098,13 +3097,13 @@ function updateAuthUI() {
     document.getElementById('auth-form-logged-in').classList.remove('hidden');
     document.getElementById('user-email-display').textContent = firebaseUser.email;
     if (btnOpenAuth) btnOpenAuth.style.borderColor = 'var(--accent-color)';
-    if (txtStatus) txtStatus.textContent = t('btn_sync_now');
+    if (txtStatus) txtStatus.textContent = 'Login';
   } else {
     document.getElementById('auth-form-logged-out').classList.remove('hidden');
     document.getElementById('auth-form-logged-in').classList.add('hidden');
     document.getElementById('user-email-display').textContent = '';
     if (btnOpenAuth) btnOpenAuth.style.borderColor = 'var(--border-color)';
-    if (txtStatus) txtStatus.textContent = t('btn_login');
+    if (txtStatus) txtStatus.textContent = 'Login';
   }
 }
 
@@ -3333,14 +3332,6 @@ function setupAuthListeners() {
   });
 
   document.getElementById('btn-fb-logout')?.addEventListener('click', () => logoutFirebase());
-
-  document.getElementById('btn-fb-sync-now')?.addEventListener('click', async () => {
-    if (firebaseUser) {
-      await downloadFromFirebase();
-      await uploadToFirebase();
-      showToast(t('js_sync_ok'));
-    }
-  });
 }
 
 // --- WEB SHARE TARGET API (RECEBER LINKS COMPARTILHADOS PELO CELULAR) ---
