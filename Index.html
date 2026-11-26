@@ -1,0 +1,3059 @@
+```html
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#131314" id="meta-theme-color">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Galactica RSS">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Galactica RSS</title>
+<link rel="icon" href="icon-128.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-128.png">
+<style>
+:root {
+  --bg-color: #f8f9fa;
+  --surface-color: #ffffff;
+  --surface-hover: #f1f3f4;
+  --text-primary: #202124;
+  --text-secondary: #5f6368;
+  --accent-color: #f948a1;
+  --accent-orange: #f48e63;
+  --border-color: #dadce0;
+  --danger-color: #d93025;
+  --pulse-color: rgba(0, 0, 0, 0.4);
+  --pulse-border: #000000;
+  --player-bg: #f2f3f4;
+}
+
+body[data-theme="dark"] {
+  --bg-color: #131314;
+  --surface-color: #1e1f20;
+  --surface-hover: #333537;
+  --text-primary: #e8eaed;
+  --text-secondary: #9aa0a6;
+  --border-color: #333537;
+  --pulse-color: rgba(255, 255, 255, 0.3);
+  --pulse-border: #ffffff;
+  --player-bg: #2a2b2c;
+}
+
+body[data-theme="dark"] .search-bar {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+}
+
+html {
+  font-size: 14px;
+}
+
+body {
+  margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--surface-hover);
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: row;
+  height: 100vh;
+  height: 100dvh;
+  padding: calc(8px + env(safe-area-inset-top)) 0 calc(8px + env(safe-area-inset-bottom)) 0;
+  gap: 0;
+  box-sizing: border-box;
+  transition: background-color 0.3s, color 0.3s;
+  overflow: hidden;
+  max-width: 500px;
+}
+
+/* Painel Principal de Conteúdo */
+.content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  height: 100%;
+  padding: 16px;
+  scroll-behavior: smooth;
+  background: var(--surface-color);
+  border-radius: 16px;
+  border: 1px solid var(--border-color);
+  margin-left: 8px;
+  z-index: 1;
+  position: relative;
+  box-sizing: border-box;
+  width: calc(100% - 48px);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(121, 116, 126, 0.45) transparent;
+}
+
+body[data-theme="dark"] .content {
+  scrollbar-color: rgba(147, 143, 153, 0.45) transparent;
+}
+
+/* Barra Lateral Unificada (Direita - Visualização Simples sem Categorias) */
+.right-sidebar {
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px 0;
+  height: 100%;
+  box-sizing: border-box;
+  z-index: 10;
+  flex-shrink: 0;
+}
+
+.main-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: auto;
+  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.tab-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 14px auto;
+  transition: all 0.2s;
+  padding: 0;
+  position: relative;
+}
+
+.tab-btn svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: auto;
+  transition: transform 0.3s ease;
+}
+
+.tab-btn:hover,
+.tab-btn.active {
+  color: var(--accent-color);
+}
+
+/* Animações dos Ícones da Sidebar */
+.tab-btn.animate-icon[data-tab="timeline"] svg line {
+  animation: timelineLineCascade 0.4s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+.tab-btn.animate-icon[data-tab="timeline"] svg line:nth-child(1) { animation-delay: 0s; }
+.tab-btn.animate-icon[data-tab="timeline"] svg line:nth-child(2) { animation-delay: 0.08s; }
+.tab-btn.animate-icon[data-tab="timeline"] svg line:nth-child(3) { animation-delay: 0.16s; }
+
+@keyframes timelineLineCascade {
+  0% { transform: scaleX(0.2); opacity: 0.3; transform-origin: left center; }
+  100% { transform: scaleX(1); opacity: 1; transform-origin: left center; }
+}
+
+.tab-btn.animate-icon[data-tab="salvos"] svg path {
+  stroke-dasharray: 60;
+  stroke-dashoffset: 60;
+  animation: savedPathDraw 0.45s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes savedPathDraw {
+  to { stroke-dashoffset: 0; }
+}
+
+.tab-btn.animate-icon[data-tab="feeds"] svg path:nth-of-type(1) {
+  animation: feedWaveSpread 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) 0.05s forwards;
+  transform-origin: 4px 19px;
+}
+.tab-btn.animate-icon[data-tab="feeds"] svg path:nth-of-type(2) {
+  animation: feedWaveSpread 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.12s forwards;
+  transform-origin: 4px 19px;
+}
+.tab-btn.animate-icon[data-tab="feeds"] svg circle {
+  animation: feedDotPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  transform-origin: 5px 19px;
+}
+
+@keyframes feedWaveSpread {
+  0% { transform: scale(0.4); opacity: 0.2; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes feedDotPop {
+  0% { transform: scale(0); }
+  100% { transform: scale(1); }
+}
+
+.tab-btn.animate-icon[data-tab="config"] svg {
+  animation: gearSmoothRotate 0.5s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center center;
+}
+
+@keyframes gearSmoothRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(90deg); }
+}
+
+.sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.support-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  width: 100%;
+  gap: 4px;
+}
+
+.support-link span {
+  font-size: 0.42rem;
+  color: var(--text-secondary);
+  font-weight: bold;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+.support-link img,
+.support-link svg {
+  width: 18px;
+  height: 18px;
+  display: block;
+  margin: 0 auto;
+  color: var(--text-secondary);
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), color 0.2s;
+}
+
+.support-link:hover svg {
+  color: var(--accent-color);
+  animation: cupTiltHeartbeat 0.8s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+}
+
+@keyframes cupTiltHeartbeat {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-12deg) scale(1.1); }
+  50% { transform: rotate(-12deg) scale(1.02); }
+  75% { transform: rotate(-12deg) scale(1.12); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+#sidebar-logo {
+  width: 20px;
+  height: 20px;
+  display: block;
+  margin: 0 auto;
+  opacity: 0.92;
+  cursor: pointer;
+}
+
+/* Transições de Abas */
+.tab-content {
+  display: none;
+  overflow-x: hidden;
+}
+
+.tab-content.active {
+  display: block;
+  animation: tabFadeSlideUp 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@keyframes tabFadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+h2 {
+  font-size: 1.25rem;
+  margin: 0;
+}
+
+/* Cabeçalho e Barra de Busca */
+.header-actions {
+  margin-bottom: 16px;
+}
+
+.header-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  min-height: 32px;
+}
+
+.search-bar {
+  width: 100%;
+  padding: 8px 16px 8px 36px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background-color: var(--surface-color);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'%3E%3C/circle%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'%3E%3C/line%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 12px center;
+  color: var(--text-primary);
+  box-sizing: border-box;
+  outline: none;
+}
+
+.search-bar:focus {
+  border-color: var(--accent-color);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.actions button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 6px;
+  border-radius: 6px;
+  transition: color 0.2s, background-color 0.2s;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.actions button:hover {
+  color: var(--accent-color);
+}
+
+.actions svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Confirmação suave ao limpar a timeline */
+#btn-clear.confirming {
+  background-color: rgba(217, 48, 37, 0.14);
+  color: var(--danger-color);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  gap: 4px;
+}
+
+#btn-clear.confirming svg {
+  width: 13px;
+  height: 13px;
+}
+
+/* Animações da Header */
+.btn-search-pulse svg .search-lens {
+  animation: searchLensPulse 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: 11px 11px;
+}
+.btn-search-pulse svg .search-handle {
+  animation: searchHandleTilt 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: 16.65px 16.65px;
+}
+
+@keyframes searchLensPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.22); }
+  100% { transform: scale(1); }
+}
+
+@keyframes searchHandleTilt {
+  0% { transform: rotate(0deg); }
+  50% { transform: rotate(-12deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.anim-grid-pop svg rect {
+  animation: gridRectPop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.anim-grid-pop svg rect:nth-child(1) { animation-delay: 0s; transform-origin: 6.5px 6.5px; }
+.anim-grid-pop svg rect:nth-child(2) { animation-delay: 0.05s; transform-origin: 17.5px 6.5px; }
+.anim-grid-pop svg rect:nth-child(3) { animation-delay: 0.1s; transform-origin: 17.5px 17.5px; }
+.anim-grid-pop svg rect:nth-child(4) { animation-delay: 0.15s; transform-origin: 6.5px 17.5px; }
+
+@keyframes gridRectPop {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.65); }
+  100% { transform: scale(1); }
+}
+
+.anim-grid-pop svg .list-line-1 { animation: listLineSlide1 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+.anim-grid-pop svg .list-line-2 { animation: listLineSlide2 0.35s cubic-bezier(0.25, 1, 0.5, 1) 0.04s forwards; }
+.anim-grid-pop svg .list-line-3 { animation: listLineSlide1 0.35s cubic-bezier(0.25, 1, 0.5, 1) 0.08s forwards; }
+
+@keyframes listLineSlide1 {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes listLineSlide2 {
+  0% { transform: translateX(0); }
+  50% { transform: translateX(-3px); }
+  100% { transform: translateX(0); }
+}
+
+.anim-grid-pop svg .title-line-1 { animation: titleCompressTop 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; transform-origin: center 6px; }
+.anim-grid-pop svg .title-line-3 { animation: titleCompressBottom 0.35s cubic-bezier(0.25, 1, 0.5, 1) forwards; transform-origin: center 18px; }
+
+@keyframes titleCompressTop {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+  100% { transform: translateY(0); }
+}
+
+@keyframes titleCompressBottom {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+  100% { transform: translateY(0); }
+}
+
+.anim-refresh-spin svg {
+  animation: refreshSpinOvershoot 0.55s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center center;
+}
+
+@keyframes refreshSpinOvershoot {
+  0% { transform: rotate(0deg); }
+  80% { transform: rotate(380deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.anim-trash-lid svg {
+  animation: trashPopAndDrop 0.45s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  transform-origin: center bottom;
+}
+
+@keyframes trashPopAndDrop {
+  0% { transform: translateY(0) scale(1); }
+  35% { transform: translateY(-5px) scale(1.05); }
+  70% { transform: translateY(1px) scale(0.95); }
+  85% { transform: translateY(-1px) scale(1.02); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+/* Player de Resumo */
+.player-container {
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background: var(--player-bg);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  display: flex;
+  flex-direction: column;
+}
+
+.player-content-row {
+  padding: 11.5px 12px;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-left {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  min-width: 0;
+  overflow: hidden;
+  padding-right: 4px;
+}
+
+.player-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.player-right {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.player-title {
+  font-weight: 600;
+  color: var(--accent-color);
+  font-size: 0.86rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+  max-width: 100%;
+}
+
+.control-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 50%;
+  transition: all 0.2s;
+}
+
+.control-btn:hover:not(:disabled) {
+  color: var(--accent-color);
+  background: var(--surface-hover);
+}
+
+.control-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.control-btn.play-btn {
+  background: var(--accent-color);
+  color: white;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.control-btn.play-btn svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.control-btn.play-btn svg polygon {
+  transform: translateX(1px);
+}
+
+.control-btn.play-btn:hover:not(:disabled) {
+  filter: brightness(0.9);
+  color: white;
+  background: var(--accent-color);
+}
+
+.control-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 3px;
+  background: transparent;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #f48e63, #f948a1);
+  transition: width 0.1s linear;
+}
+
+@keyframes liquid-wave {
+  0% { transform: translateX(-50%) rotate(0deg); }
+  100% { transform: translateX(-50%) rotate(360deg); }
+}
+
+@keyframes textPulse {
+  0% { opacity: 0.6; filter: drop-shadow(0 0 0px var(--accent-color)); }
+  50% { opacity: 1; filter: drop-shadow(0 0 5px var(--accent-color)); }
+  100% { opacity: 0.6; filter: drop-shadow(0 0 0px var(--accent-color)); }
+}
+
+.ai-icon.spinning {
+  animation: textPulse 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  100% { transform: rotate(360deg); }
+}
+
+#btn-refresh svg.spinning {
+  animation: spin 1s linear infinite;
+  transform-origin: center;
+}
+
+.speed-control {
+  display: flex;
+  background-color: #333537;
+  border-radius: 16px;
+  overflow: hidden;
+  padding: 2px;
+  border: 1px solid var(--border-color);
+  height: 20px;
+  box-sizing: border-box;
+  gap: 2px;
+}
+
+body[data-theme="light"] .speed-control {
+  background-color: #e8eaed;
+}
+
+.speed-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.55rem;
+  font-weight: 600;
+  padding: 0 4px;
+  height: 100%;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.speed-btn.active {
+  background-color: var(--accent-color);
+  color: #ffffff;
+}
+
+/* Accordions */
+.accordion-container {
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--surface-color);
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.accordion-header {
+  width: 100%;
+  background: transparent;
+  border: none;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  color: var(--accent-color);
+  font-weight: 600;
+  transition: background-color 0.2s;
+}
+
+.accordion-header:hover {
+  background: var(--surface-hover);
+}
+
+.accordion-header span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.accordion-header .chevron {
+  transition: transform 0.3s ease;
+}
+
+.accordion-header.expanded .chevron {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  max-height: 0;
+  padding: 0 16px;
+  opacity: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: flex-start;
+  transition: max-height 0.4s ease, padding 0.4s ease, opacity 0.3s ease;
+  border-top: 1px solid transparent;
+}
+
+.accordion-content.expanded {
+  max-height: 1500px;
+  padding: 16px;
+  opacity: 1;
+  border-top-color: var(--border-color);
+}
+
+#timeline-list,
+#salvos-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  overflow-x: hidden;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Estrutura dos Cards e Gestos Swipe Estilo Baralho */
+.card {
+  background: transparent;
+  border: none;
+  margin-bottom: 12px;
+  overflow: hidden;
+  box-sizing: border-box;
+  scroll-margin-top: 80px;
+  position: relative;
+  transform-origin: center bottom;
+  transition: max-height 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              margin-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.22s ease,
+              padding 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: max-height, margin-bottom, opacity;
+  width: 100%;
+}
+
+.swipe-card {
+  position: relative;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.swipe-content {
+  position: relative;
+  z-index: 2;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  will-change: transform, opacity;
+  transition: box-shadow 0.2s, background-color 0.2s, border-color 0.2s;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.swipe-content:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  border-color: var(--accent-color);
+  background-color: var(--surface-hover);
+  cursor: pointer;
+}
+
+.card.faded .swipe-content {
+  opacity: 0.4;
+  filter: grayscale(50%);
+}
+
+.card.faded:hover .swipe-content {
+  opacity: 0.8;
+  filter: grayscale(0%);
+}
+
+.swipe-content.animating {
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.2s ease;
+}
+
+/* Curva criticamente amortecida: retorna suavemente para 0px sem rebote */
+.swipe-content.spring-back {
+  transition: transform 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.swipe-bg {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  box-sizing: border-box;
+}
+
+.swipe-bg-save {
+  left: 0;
+  background-color: var(--accent-orange);
+  justify-content: flex-start;
+  padding-left: 20px;
+}
+
+.swipe-bg-delete {
+  right: 0;
+  background-color: var(--accent-color);
+  justify-content: flex-end;
+  padding-right: 20px;
+}
+
+.swipe-action-content {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transform: scale(0.82);
+}
+
+.swipe-bg.active-threshold .swipe-action-content {
+  transform: scale(1.18);
+}
+
+.swipe-action-content svg {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+.swipe-content.swipe-out-left {
+  transform: translateX(-115%) rotate(-5deg) !important;
+  opacity: 0 !important;
+  transition: transform 0.26s cubic-bezier(0.32, 0, 0.67, 0), opacity 0.22s ease !important;
+}
+
+.card.collapsing {
+  max-height: 0 !important;
+  margin-bottom: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: max-height 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+              margin-bottom 0.26s cubic-bezier(0.22, 1, 0.36, 1),
+              opacity 0.18s ease !important;
+}
+
+/* Indicador Push ao Final da Timeline */
+.timeline-end-push-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 0 30px 0;
+  margin-top: 0;
+  text-align: center;
+  box-sizing: border-box;
+  clear: both;
+}
+
+.push-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: 0.2px;
+  user-select: none;
+}
+
+@keyframes pushBounce {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+  100% { transform: translateY(0); }
+}
+
+.timeline-push-bounce {
+  animation: pushBounce 0.3s ease-in-out;
+}
+
+/* Cards de Feeds na Aba Feeds */
+.feed-card {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  overflow: hidden;
+  transition: background-color 0.2s, box-shadow 0.2s;
+}
+
+.feed-card:hover {
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.feed-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background: transparent;
+  gap: 8px;
+}
+
+.feed-item-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.feed-item-info img {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+
+.feed-item-text {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
+  flex: 1;
+}
+
+.feed-item-title {
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.feed-item-url {
+  font-size: 0.70rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.feed-health-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger-color);
+  cursor: help;
+  flex-shrink: 0;
+  animation: warningPulse 1.8s infinite ease-in-out;
+}
+
+@keyframes warningPulse {
+  0% { opacity: 0.6; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.08); }
+  100% { opacity: 0.6; transform: scale(0.95); }
+}
+
+.feed-accordion-header {
+  padding: 8px 12px;
+  background: var(--surface-hover);
+  border-top: 1px solid var(--border-color);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-secondary);
+  transition: background 0.2s;
+}
+
+.feed-accordion-header:hover {
+  background: var(--border-color);
+  color: var(--text-primary);
+}
+
+.feed-accordion-content {
+  display: none;
+  padding: 12px;
+  border-top: 1px solid var(--border-color);
+  background: var(--surface-color);
+}
+
+/* Conteúdo e Cabeçalho dos Cards */
+.card-image-wrapper {
+  overflow: hidden;
+  width: 100%;
+  height: 125px;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+
+.card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #eee;
+  display: block;
+  transition: transform 0.25s ease;
+}
+
+.swipe-content:hover .card-image {
+  transform: scale(1.05);
+}
+
+.card-content {
+  padding: 12px;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.site-logo {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.site-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.card-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  max-width: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transition: opacity 0.18s ease, max-width 0.22s ease;
+}
+
+.swipe-content:hover .card-actions,
+.swipe-content:focus-within .card-actions {
+  opacity: 1;
+  max-width: 120px;
+  pointer-events: auto;
+}
+
+@media (hover: none) {
+  .card-actions {
+    opacity: 1;
+    max-width: 120px;
+    pointer-events: auto;
+  }
+}
+
+.card-action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.card-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.card-action-btn:hover {
+  color: var(--accent-color);
+}
+
+.card-date {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card-title a {
+  text-decoration: none;
+  color: var(--text-primary);
+  transition: color 0.2s;
+}
+
+.card-title a:hover {
+  color: var(--accent-color);
+}
+
+.card-summary {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Visualização em Lista */
+.list-view .swipe-content {
+  display: flex;
+  align-items: stretch;
+  padding: 12px;
+  height: 100px;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.list-view .card-image-wrapper {
+  width: 80px;
+  height: 100%;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.list-view .card-content {
+  padding: 0;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.list-view .card-summary {
+  display: none;
+}
+
+.list-view .card-title {
+  font-size: 0.95rem;
+  margin-bottom: 4px;
+  -webkit-line-clamp: 2;
+}
+
+.list-view .card-header {
+  margin-bottom: 4px;
+}
+
+/* Visualização Apenas Títulos (até 2 linhas em telas estreitas) */
+.title-only-view .swipe-content {
+  padding: 9px 12px;
+  height: auto;
+  display: block;
+  box-sizing: border-box;
+}
+
+.title-only-view .card-image-wrapper {
+  display: none;
+}
+
+.title-only-view .card-content {
+  padding: 0;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 5px;
+}
+
+.title-only-view .card-summary {
+  display: none;
+}
+
+.title-only-view .card-title {
+  font-size: 0.92rem;
+  line-height: 1.32;
+  margin: 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  white-space: normal;
+  font-weight: 500;
+}
+
+.title-only-view .card-header {
+  margin: 0;
+}
+
+/* Skeleton Loading */
+.skeleton {
+  animation: skeletonPulse 1.2s ease-in-out infinite alternate;
+  background-color: var(--border-color);
+  border-radius: 4px;
+}
+
+@keyframes skeletonPulse {
+  0% { opacity: 0.8; }
+  100% { opacity: 0.3; }
+}
+
+.skeleton-card {
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 10px;
+  cursor: default;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  margin-bottom: 12px;
+}
+
+.skeleton-card:hover {
+  transform: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background-color: var(--surface-color);
+}
+
+.skeleton-img-wrapper {
+  width: 100%;
+  height: 125px;
+  border-radius: 6px;
+}
+
+.skeleton-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skeleton-header {
+  width: 40%;
+  height: 16px;
+  margin-bottom: 4px;
+}
+
+.skeleton-title {
+  width: 90%;
+  height: 20px;
+}
+
+.skeleton-summary {
+  width: 100%;
+  height: 14px;
+}
+
+.list-view .skeleton-card {
+  flex-direction: row;
+  height: 100px;
+  padding: 12px;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.list-view .skeleton-img-wrapper {
+  width: 80px;
+  height: 100%;
+}
+
+.list-view .skeleton-content {
+  justify-content: center;
+  padding: 0;
+  gap: 6px;
+}
+
+.list-view .skeleton-summary {
+  display: none;
+}
+
+.title-only-view .skeleton-card {
+  flex-direction: column-reverse;
+  height: auto;
+  padding: 8px 12px;
+  gap: 6px;
+}
+
+.title-only-view .skeleton-img-wrapper {
+  display: none;
+}
+
+.title-only-view .skeleton-content {
+  justify-content: center;
+  padding: 0;
+  gap: 6px;
+  flex-direction: column-reverse;
+}
+
+.title-only-view .skeleton-summary {
+  display: none;
+}
+
+.title-only-view .skeleton-header {
+  margin: 0;
+  height: 14px;
+  width: 50%;
+}
+
+.title-only-view .skeleton-title {
+  margin: 0;
+  height: 16px;
+  width: 100%;
+}
+
+/* Onboarding e Estados Vazios */
+.empty-onboarding {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 28px 16px;
+  border: 1px dashed var(--border-color);
+  border-radius: 14px;
+  background: var(--player-bg);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.empty-onboarding-logo {
+  width: 42px;
+  height: 42px;
+  margin-bottom: 2px;
+  border-radius: 10px;
+}
+
+.empty-onboarding h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.empty-onboarding p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  max-width: 275px;
+}
+
+.empty-onboarding-actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 250px;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.empty-onboarding-actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  width: 100%;
+}
+
+.empty-search-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.88rem;
+}
+
+/* Formulários, Tags e Opções */
+.input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.input-group input {
+  flex: 1;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.input-group input:focus {
+  border-color: var(--accent-color);
+}
+
+.input-group button {
+  background: var(--accent-color);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 0 16px;
+  cursor: pointer;
+  transition: filter 0.2s;
+}
+
+.input-group button:hover {
+  filter: brightness(0.9);
+}
+
+.feed-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.btn-delete {
+  background: none;
+  color: var(--text-secondary);
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  margin-left: 4px;
+}
+
+.btn-delete:hover {
+  color: var(--danger-color);
+  border-color: rgba(217, 48, 37, 0.3);
+  background: rgba(217, 48, 37, 0.05);
+}
+
+.btn-delete svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* OPML e Selects */
+.opml-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-color);
+}
+
+.opml-title {
+  font-weight: 600;
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.opml-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 0.95rem;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+
+.btn-text:hover {
+  color: var(--text-primary);
+}
+
+.header-select {
+  padding: 4px 20px 4px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.75rem;
+  cursor: pointer;
+  outline: none;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9L12 15L18 9' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 6px center;
+  background-size: 14px;
+  transition: border-color 0.2s;
+}
+
+.header-select:focus {
+  border-color: var(--accent-color);
+}
+
+.date-group-header {
+  font-size: 0.85rem;
+  color: var(--accent-color);
+  margin: 16px 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+}
+
+/* Grupos Temáticos da Aba Opções */
+.config-group-card {
+  background: var(--player-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 16px;
+}
+
+.config-group-title {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  color: var(--accent-color);
+  margin-bottom: 14px;
+}
+
+.config-group-card .config-item:last-child {
+  margin-bottom: 0;
+}
+
+.config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 8px;
+}
+
+.config-item.vertical {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.config-item.vertical input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 16px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  outline: none;
+}
+
+.config-item.vertical input:focus {
+  border-color: var(--accent-color);
+}
+
+.config-item label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.config-item select {
+  padding: 7px 32px 7px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  text-align: center;
+  text-align-last: center;
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M6 9L12 15L18 9' stroke='%239aa0a6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+  background-size: 15px;
+  width: auto;
+  min-width: 126px;
+  max-width: 100%;
+}
+
+.config-item select:focus {
+  border-color: var(--accent-color);
+}
+
+.password-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.password-group input {
+  padding: 7px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 24px;
+  background-color: var(--surface-color);
+  color: var(--text-primary);
+  width: 128px;
+  outline: none;
+}
+
+.password-group input:focus {
+  border-color: var(--accent-color);
+}
+
+.btn-icon-only {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: color 0.2s;
+}
+
+.btn-icon-only:hover {
+  color: var(--text-primary);
+}
+
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--border-color);
+  transition: .3s;
+  border-radius: 24px;
+}
+
+.toggle-switch input:disabled + .slider {
+  cursor: not-allowed;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: var(--accent-color);
+}
+
+input:checked + .slider:before {
+  transform: translateX(20px);
+}
+
+.divider {
+  border: 0;
+  height: 1px;
+  background: var(--border-color);
+  margin: 24px 0;
+}
+
+.danger-zone {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.danger-zone p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.btn-danger {
+  background: #f948a1;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: filter 0.2s;
+}
+
+.btn-danger:hover {
+  filter: brightness(0.9);
+}
+
+.btn-secondary {
+  background: var(--surface-color);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent-color);
+  background: var(--surface-hover);
+  color: var(--accent-color);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 24px 0;
+}
+
+/* Toast Interativo com Suporte a Botão Desfazer */
+.toast {
+  position: fixed;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--text-primary);
+  color: var(--bg-color);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 0.84rem;
+  z-index: 10000;
+  opacity: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  max-width: calc(100vw - 64px);
+  transition: opacity 0.3s ease;
+}
+
+.toast.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.toast-msg {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-undo-btn {
+  background: var(--accent-color);
+  color: #ffffff;
+  border: none;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.15s ease;
+}
+
+.toast-undo-btn:hover {
+  filter: brightness(1.1);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 16px 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(121, 116, 126, 0.4);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(121, 116, 126, 0.7);
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb {
+  background-color: rgba(147, 143, 153, 0.4);
+}
+
+body[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(147, 143, 153, 0.7);
+}
+
+.tags-header {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  align-items: flex-end;
+}
+
+.clear-btn,
+.clear-local-btn {
+  font-size: 0.85rem;
+  padding: 4px 8px;
+  margin: 0;
+  height: auto;
+  font-weight: 600;
+  color: #0a56d9;
+  cursor: pointer;
+}
+
+body[data-theme="dark"] .clear-btn,
+body[data-theme="dark"] .clear-local-btn {
+  color: #a8c7fa;
+}
+
+.tag-input-box {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-primary);
+  outline: none;
+  box-sizing: border-box;
+  font-size: 0.9rem;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+
+.tag-input-box:focus {
+  border-color: var(--accent-color);
+}
+
+.tags-list-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  width: 100%;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  height: fit-content;
+}
+
+body[data-theme="dark"] .tag-chip {
+  background: transparent;
+  color: #e8eaed;
+  border-color: var(--border-color);
+}
+
+.tag-remove {
+  background: transparent;
+  color: var(--text-secondary);
+  border: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  width: 14px;
+  height: 14px;
+  transition: color 0.2s;
+}
+
+.tag-remove:hover {
+  color: var(--danger-color);
+}
+
+body[data-theme="dark"] .tag-remove {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+.tag-remove svg {
+  width: 10px;
+  height: 10px;
+}
+
+/* Botão Voltar ao Topo */
+#btn-back-to-top {
+  position: fixed;
+  bottom: 20px;
+  right: max(52px, calc((100vw - 500px) / 2 + 52px));
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--surface-color);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 9999;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+  transition: all 0.3s ease;
+}
+
+#btn-back-to-top:hover {
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+#btn-back-to-top.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+/* Menu de Contexto Flutuante nos Cards */
+.context-menu {
+  position: fixed;
+  z-index: 10001;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 4px;
+  min-width: 185px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.context-menu.hidden {
+  display: none;
+}
+
+.context-menu-item {
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-size: 0.84rem;
+  font-weight: 500;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  transition: background-color 0.15s, color 0.15s;
+}
+
+.context-menu-item:hover {
+  background: var(--surface-hover);
+  color: var(--accent-color);
+}
+
+.context-menu-item.accent {
+  color: var(--accent-color);
+  font-weight: 600;
+}
+
+.context-menu-item.accent:hover {
+  background: rgba(249, 72, 161, 0.12);
+  color: var(--accent-color);
+}
+
+.context-menu-item.danger:hover {
+  background: rgba(217, 48, 37, 0.1);
+  color: var(--danger-color);
+}
+
+.context-menu-divider {
+  height: 1px;
+  background: var(--border-color);
+  margin: 3px 6px;
+}
+
+/* Modais / Dialogs */
+.dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(2px);
+  transition: opacity 0.2s;
+}
+
+.dialog-overlay.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.dialog-box {
+  background: var(--surface-color);
+  padding: 20px;
+  border-radius: 16px;
+  width: 260px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.dialog-box h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: var(--text-primary);
+}
+
+.dialog-hint {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-primary {
+  background: var(--accent-color);
+  color: #fff;
+  border: none;
+  padding: 7px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: filter 0.2s;
+}
+
+.btn-primary:hover {
+  filter: brightness(0.9);
+}
+
+.auth-dialog-box {
+  width: 280px;
+  padding: 24px;
+  gap: 16px;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.auth-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+.auth-body.hidden {
+  display: none;
+}
+
+.auth-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-primary);
+  outline: none;
+  font-size: 0.9rem;
+}
+
+.auth-input:focus {
+  border-color: var(--accent-color);
+}
+
+.auth-actions-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+  margin-top: 4px;
+}
+
+.auth-actions-row button {
+  flex: 1;
+  justify-content: center;
+}
+
+.user-status-txt {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  text-align: center;
+  margin-bottom: 8px;
+}
+</style>
+</head>
+<body>
+
+<!-- COLUNA 1: CONTEÚDO PRINCIPAL (ESQUERDA) -->
+<main class="content">
+  <section id="timeline" class="tab-content active">
+    <div class="header-actions">
+      <div class="header-title-row">
+        <h2><span data-i18n="title_timeline">Notícias</span> <span id="unread-count" style="display: none; font-size: 0.9rem; font-weight: normal; color: var(--text-secondary);"></span></h2>
+        <div class="actions">
+          <button id="btn-view-toggle-timeline" data-i18n-title="view_toggle">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+          </button>
+          <button id="btn-refresh" data-i18n-title="refresh">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+          </button>
+          <button id="btn-clear" data-i18n-title="clear_timeline">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+          </button>
+        </div>
+      </div>
+      <input type="search" id="search-timeline" class="search-bar" data-i18n-placeholder="search_timeline">
+    </div>
+
+    <!-- MINI PLAYER DE RESUMO IA -->
+    <div class="player-container" id="ai-summary-container">
+      <div class="player-content-row">
+        <div class="player-left">
+          <span class="player-title ai-icon" data-i18n="summary_title">Resumo</span>
+        </div>
+        <div class="player-center">
+          <button class="control-btn" id="btn-rewind" data-i18n-title="rewind" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+          </button>
+          <button class="control-btn play-btn" id="btn-play-summary" data-i18n-title="play_summary">
+            <svg viewBox="0 0 24 24" fill="currentColor" width="10" height="10"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+          </button>
+          <button class="control-btn" id="btn-forward" data-i18n-title="forward" disabled>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="12" height="12"><path d="M21 12a9 9 0 1 1-9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+          </button>
+        </div>
+        <div class="player-right">
+          <div class="speed-control">
+            <button class="speed-btn active" data-speed="1.0">1x</button>
+            <button class="speed-btn" data-speed="1.5">1.5x</button>
+          </div>
+        </div>
+      </div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill" id="player-progress"></div>
+      </div>
+    </div>
+
+    <div id="timeline-list">
+      <p class="empty-state" data-i18n="empty_timeline">Nenhuma notícia encontrada.</p>
+    </div>
+  </section>
+
+  <section id="salvos" class="tab-content">
+    <div class="header-actions">
+      <div class="header-title-row">
+        <h2 data-i18n="title_saved">Salvos</h2>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <select id="salvos-sort-select" class="header-select">
+            <option value="recent" data-i18n="sort_recent">Recentes</option>
+            <option value="oldest" data-i18n="sort_oldest">Antigos</option>
+          </select>
+          <div class="actions">
+            <button id="btn-view-toggle-salvos" data-i18n-title="view_toggle">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+      <input type="search" id="search-saved" class="search-bar" data-i18n-placeholder="search_saved">
+    </div>
+    <div id="salvos-list">
+      <p class="empty-state" data-i18n="empty_saved">Nenhuma notícia salva.</p>
+    </div>
+  </section>
+
+  <section id="feeds" class="tab-content">
+    <div class="header-actions">
+      <div class="header-title-row">
+        <h2 data-i18n="title_feeds">Meus Feeds</h2>
+        <select id="feed-sort-select" class="header-select">
+          <option value="recent" data-i18n="sort_recent">Recentes</option>
+          <option value="az" data-i18n="sort_az">A > Z</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <input type="url" id="feed-input" data-i18n-placeholder="placeholder_feed" required>
+        <button id="btn-add-feed" data-i18n-title="btn_add" style="font-size: 1.2rem; font-weight: bold; width: 44px; padding: 0; border-radius: 24px;">+</button>
+      </div>
+    </div>
+
+    <ul id="feed-list" class="feed-list">
+    </ul>
+
+    <div class="opml-section">
+      <span class="opml-title" data-i18n="opml_title">Lista OPML</span>
+      <div class="opml-actions">
+        <label for="opml-input" class="btn-text" data-i18n="opml_import">Importar</label>
+        <input type="file" id="opml-input" accept=".opml,.xml" style="display: none;">
+        <button id="btn-opml-export" class="btn-text" data-i18n="opml_export">Exportar</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="config" class="tab-content">
+    <div class="header-actions">
+      <div class="header-title-row">
+        <h2 data-i18n="title_options">Opções</h2>
+      </div>
+    </div>
+
+    <!-- GRUPO 1: APLICATIVO & SINCRONIZAÇÃO EM NUVEM -->
+    <div class="config-group-card">
+      <div class="config-group-title" data-i18n="cfg_group_account_app">Conta & Aplicativo</div>
+
+      <div class="config-item">
+        <label data-i18n="cloud_sync_title">Sincronização em Nuvem:</label>
+        <button id="btn-open-auth-dialog" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a7 7 0 00-14 0v2"></path></svg>
+          <span id="auth-status-btn-text">Login</span>
+        </button>
+      </div>
+
+      <div class="config-item" id="install-app-row">
+        <label data-i18n="pwa_install_lbl">Atalho / Aplicativo:</label>
+        <button id="btn-install-pwa" class="btn-secondary" style="font-size: 0.85rem; padding: 6px 14px;">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+          <span id="btn-install-pwa-text" data-i18n="pwa_install_btn">Instalar App</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- GRUPO 2: LEITURA & COMPORTAMENTO -->
+    <div class="config-group-card">
+      <div class="config-group-title" data-i18n="cfg_group_reading">Leitura & Comportamento</div>
+
+      <div class="config-item">
+        <label for="config-auto-translate" data-i18n="cfg_translate">Traduzir notícias:</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="config-auto-translate">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-item">
+        <label for="config-range" data-i18n="cfg_range">Mostrar notícias dos últimos:</label>
+        <select id="config-range">
+          <option value="1" data-i18n="opt_1d">1 dia</option>
+          <option value="3" data-i18n="opt_3d">3 dias</option>
+          <option value="7" data-i18n="opt_7d">7 dias</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-unread" data-i18n="cfg_unread">Mostrar contador de não lidas:</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="config-unread">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-item">
+        <label for="config-clear-faded" data-i18n="cfg_clear_faded">Limpar desvanecidos ao fechar:</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="config-clear-faded">
+          <span class="slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- GRUPO 3: RESUMO POR INTELIGÊNCIA ARTIFICIAL -->
+    <div class="config-group-card">
+      <div class="config-group-title" data-i18n="cfg_group_ai">Resumo por Inteligência Artificial</div>
+
+      <div class="config-item">
+        <label for="config-show-ai" data-i18n="cfg_player">Player de resumo:</label>
+        <label class="toggle-switch">
+          <input type="checkbox" id="config-show-ai">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="config-item">
+        <label for="config-summary-type" data-i18n="cfg_summarize">Resumir:</label>
+        <select id="config-summary-type">
+          <option value="saved" data-i18n="tab_saved">Salvos</option>
+          <option value="timeline" data-i18n="tab_timeline">Timeline</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-ai-profile" data-i18n="cfg_ai_profile">Estilo do Resumo:</label>
+        <select id="config-ai-profile">
+          <option value="news" data-i18n="opt_profile_news">Telejornal</option>
+          <option value="brief" data-i18n="opt_profile_brief">Objetivo</option>
+          <option value="sarcastic" data-i18n="opt_profile_sarcastic">Sarcástico</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-audio-type" data-i18n="cfg_voice">Voz do resumo:</label>
+        <select id="config-audio-type">
+          <option value="ai_voice" data-i18n="opt_ai">Voz por IA</option>
+          <option value="browser_tts" data-i18n="opt_tts">Text-to-Speech</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-llm-model" data-i18n="cfg_llm">Modelo LLM:</label>
+        <select id="config-llm-model">
+          <option value="gemini-2.5-flash">Gemini Flash</option>
+          <option value="gpt-4o-mini">ChatGPT Mini</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-api-key" data-i18n="cfg_api">Chave API:</label>
+        <div class="password-group">
+          <button id="toggle-api-key" class="btn-icon-only" title="Mostrar/Ocultar">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path></svg>
+          </button>
+          <input type="password" id="config-api-key" placeholder="••••••••••••••••">
+        </div>
+      </div>
+    </div>
+
+    <!-- GRUPO 4: APARÊNCIA & ATUALIZAÇÃO -->
+    <div class="config-group-card">
+      <div class="config-group-title" data-i18n="cfg_group_appearance">Aparência & Atualização</div>
+
+      <div class="config-item">
+        <label for="config-language" data-i18n="cfg_lang">Idioma:</label>
+        <select id="config-language">
+          <option value="en" data-i18n="lang_en">Inglês</option>
+          <option value="pt-BR" data-i18n="lang_pt">Português</option>
+          <option value="es" data-i18n="lang_es">Espanhol</option>
+          <option value="fr" data-i18n="lang_fr">Francês</option>
+          <option value="zh" data-i18n="lang_zh">Chinês</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-theme" data-i18n="cfg_theme">Tema:</label>
+        <select id="config-theme">
+          <option value="light" data-i18n="opt_light">Claro</option>
+          <option value="dark" data-i18n="opt_dark">Escuro</option>
+        </select>
+      </div>
+
+      <div class="config-item">
+        <label for="config-interval" data-i18n="cfg_interval">Verificar atualizações a cada:</label>
+        <select id="config-interval">
+          <option value="15" data-i18n="opt_15m">15 minutos</option>
+          <option value="60" data-i18n="opt_1h">1 hora</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- GRUPO 5: FILTROS & BACKUP -->
+    <div class="config-group-card">
+      <div class="config-group-title" data-i18n="cfg_group_data">Filtros & Backup</div>
+
+      <div class="accordion-container" style="margin-bottom: 14px;">
+        <button id="btn-word-filters" class="accordion-header">
+          <span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+            <span data-i18n="blacklist_title">Filtro negativo (global)</span>
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="6 9 12 15 18 9"></polyline></svg>
+        </button>
+        <div id="word-filters-content" class="accordion-content">
+          <div class="config-item vertical" style="width: 100%; margin-bottom: 0;">
+            <div class="tags-header" style="margin-bottom: 8px;">
+              <label data-i18n="blacklist_lbl">Esconder notícias com as palavras:</label>
+              <button class="btn-text clear-btn" id="btn-clear-filter" data-i18n="btn_clear">limpar</button>
+            </div>
+            <input type="text" id="input-filter" class="tag-input-box" data-i18n-placeholder="filter_placeholder">
+            <div id="container-filter" class="tags-list-container"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="opml-section" style="margin-top: 8px; padding-top: 12px;">
+        <span class="opml-title" data-i18n="backup_title">BACKUP TOTAL</span>
+        <div class="opml-actions">
+          <label for="input-import-backup" class="btn-text" style="cursor: pointer;" data-i18n="backup_import">Importar</label>
+          <input type="file" id="input-import-backup" accept=".json" style="display: none;">
+          <button id="btn-export-backup" class="btn-text" data-i18n="backup_export">Exportar</button>
+        </div>
+      </div>
+
+      <hr class="divider" style="margin: 14px 0;">
+
+      <div class="config-item danger-zone" style="margin-bottom: 0;">
+        <p data-i18n="danger_txt">Apagar todos os dados armazenados (Feeds e Cache).</p>
+        <button id="btn-reset-data" class="btn-danger" data-i18n="btn_reset">Resetar Aplicativo</button>
+      </div>
+    </div>
+
+  </section>
+  
+</main>
+
+<!-- COLUNA 2: BARRA LATERAL UNIFICADA (DIREITA - VISUALIZAÇÃO SIMPLES SEM CATEGORIAS) -->
+<aside class="right-sidebar">
+  <nav class="main-nav">
+    <button class="tab-btn active" data-tab="timeline" data-i18n-title="tab_timeline">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/></svg>
+    </button>
+    <button class="tab-btn" data-tab="salvos" data-i18n-title="tab_saved">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+    </button>
+    <button class="tab-btn" data-tab="feeds" data-i18n-title="tab_feeds">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 11a9 9 0 0 1 9 9"/><path d="M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1"/></svg>
+    </button>
+    <button class="tab-btn" data-tab="config" data-i18n-title="tab_options">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <a href="https://ko-fi.com/galacticarss" target="_blank" rel="noopener noreferrer" data-i18n-title="support" class="support-link">
+      <span data-i18n="support">Apoie</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
+    </a>
+    <img id="sidebar-logo" src="icon-128.png" alt="Logo">
+  </div>
+</aside>
+
+<div id="toast" class="toast hidden"></div>
+
+<button id="btn-back-to-top" title="Voltar ao topo">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="16" height="16"><polyline points="18 15 12 9 6 15"></polyline></svg>
+</button>
+
+<!-- MENU DE CONTEXTO NOS CARDS DE NOTÍCIAS -->
+<div id="card-context-menu" class="context-menu hidden" role="menu">
+  <button id="ctx-card-listen" class="context-menu-item accent" role="menuitem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 18v-6a9 9 0 0 1 18 0v6"></path><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"></path></svg>
+    <span data-i18n="ctx_listen_summary">Ouvir resumo detalhado</span>
+  </button>
+  <div class="context-menu-divider"></div>
+  <button id="ctx-card-save" class="context-menu-item" role="menuitem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+    <span id="ctx-card-save-label" data-i18n="js_read_later">Ler mais tarde</span>
+  </button>
+  <button id="ctx-card-copy" class="context-menu-item" role="menuitem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+    <span data-i18n="ctx_copy_link">Copiar link</span>
+  </button>
+  <button id="ctx-card-delete" class="context-menu-item danger" role="menuitem">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+    <span data-i18n="js_remove">Remover</span>
+  </button>
+</div>
+
+<!-- DIALOG POPUP PARA LOGIN E SINCRONIZAÇÃO EM NUVEM (FIREBASE) -->
+<div id="auth-dialog-overlay" class="dialog-overlay hidden">
+  <div class="dialog-box auth-dialog-box">
+    <div class="dialog-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a7 7 0 00-14 0v2"></path></svg>
+        <h3 data-i18n="cloud_sync_title">Sincronização em Nuvem</h3>
+      </div>
+      <button id="btn-close-auth-dialog" class="btn-icon-only" title="Fechar" style="font-size: 1.2rem; line-height: 1;">&times;</button>
+    </div>
+
+    <!-- Estado: Não Logado -->
+    <div id="auth-form-logged-out" class="auth-body">
+      <input type="email" id="auth-email" placeholder="E-mail" class="auth-input" autocomplete="email">
+      <input type="password" id="auth-password" placeholder="Senha" class="auth-input" autocomplete="current-password">
+      
+      <div class="auth-actions-row">
+        <button id="btn-fb-login" class="btn-primary" data-i18n="btn_login">Entrar</button>
+        <button id="btn-fb-register" class="btn-secondary" data-i18n="btn_register">Criar Conta</button>
+      </div>
+
+      <button id="btn-fb-reset-pwd" class="btn-text" style="font-size: 0.8rem; margin-top: 4px; padding: 0; text-align: center; width: 100%; text-decoration: underline;" data-i18n="btn_forgot_pwd">Esqueci minha senha</button>
+    </div>
+
+    <!-- Estado: Logado -->
+    <div id="auth-form-logged-in" class="auth-body hidden">
+      <p class="user-status-txt"><span data-i18n="logged_as">Conectado como:</span> <strong id="user-email-display" style="word-break: break-all;"></strong></p>
+      <div class="auth-actions-row">
+        <button id="btn-fb-sync-now" class="btn-primary" data-i18n="btn_sync_now">Sincronizar Agora</button>
+        <button id="btn-fb-logout" class="btn-danger" data-i18n="btn_logout">Sair</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DIALOG DE INSTRUÇÕES PARA INSTALAR COMO APP -->
+<div id="install-dialog-overlay" class="dialog-overlay hidden">
+  <div class="dialog-box auth-dialog-box">
+    <div class="dialog-header">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--accent-color);"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+        <h3 data-i18n="pwa_modal_title">Instalar Galactica RSS</h3>
+      </div>
+      <button id="btn-close-install-dialog" class="btn-icon-only" title="Fechar" style="font-size: 1.2rem; line-height: 1;">&times;</button>
+    </div>
+    <p id="pwa-modal-instructions" class="dialog-hint"></p>
+    <div class="dialog-actions">
+      <button id="btn-ok-install-dialog" class="btn-primary">OK</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- REGISTRO DINÂMICO DE MANIFEST PWA & SERVICE WORKER ---
+(function initPWA() {
+  async function buildPaddedMaskableIcon(iconUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const size = 512;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+
+          // Amostra a borda do ícone original para preencher o fundo sem cortes no Android
+          const probe = document.createElement('canvas');
+          probe.width = img.naturalWidth || 128;
+          probe.height = img.naturalHeight || 128;
+          const pCtx = probe.getContext('2d');
+          pCtx.drawImage(img, 0, 0);
+          const pixel = pCtx.getImageData(2, 2, 1, 1).data;
+
+          if (pixel[3] > 200) {
+            ctx.fillStyle = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+          } else {
+            ctx.fillStyle = '#f4f4f5';
+          }
+          ctx.fillRect(0, 0, size, size);
+
+          // Desenha o logotipo centralizado com ~18% de margem em todos os lados (zona segura)
+          const innerScale = 0.64;
+          const targetSize = Math.round(size * innerScale);
+          const offset = Math.round((size - targetSize) / 2);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, offset, offset, targetSize, targetSize);
+
+          canvas.toBlob((blob) => {
+            resolve(blob ? URL.createObjectURL(blob) : iconUrl);
+          }, 'image/png');
+        } catch (e) {
+          resolve(iconUrl);
+        }
+      };
+      img.onerror = () => resolve(iconUrl);
+      img.src = iconUrl;
+    });
+  }
+
+  (async () => {
+    try {
+      const baseUrl = window.location.href.split('#')[0];
+      const icon128 = new URL('icon-128.png', baseUrl).href;
+      const icon48 = new URL('icon-48.png', baseUrl).href;
+      const paddedIcon512 = await buildPaddedMaskableIcon(icon128);
+
+      const manifestObj = {
+        name: "Galactica RSS",
+        short_name: "Galactica RSS",
+        description: "Leitor de feeds RSS limpo, sincronizado e com resumo por IA.",
+        start_url: baseUrl,
+        scope: new URL('./', baseUrl).href,
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#131314",
+        theme_color: "#131314",
+        icons: [
+          { src: icon48, sizes: "48x48", type: "image/png", purpose: "any" },
+          { src: icon128, sizes: "128x128", type: "image/png", purpose: "any" },
+          { src: paddedIcon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
+        ]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = URL.createObjectURL(manifestBlob);
+      document.head.appendChild(manifestLink);
+    } catch (e) {}
+  })();
+
+  if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+  }
+})();
+
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  updateInstallAppUI();
+});
+
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  updateInstallAppUI();
+  showToast(t('pwa_installed'));
+});
+
+function isAppStandalone() {
+  return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+}
+
+function updateInstallAppUI() {
+  const btn = document.getElementById('btn-install-pwa');
+  const btnText = document.getElementById('btn-install-pwa-text');
+  if (!btn || !btnText) return;
+  if (isAppStandalone()) {
+    btnText.textContent = t('pwa_installed_badge');
+    btn.disabled = true;
+    btn.style.opacity = '0.6';
+  } else {
+    btnText.textContent = t('pwa_install_btn');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+  }
+}
+
+function triggerInstallApp() {
+  if (deferredInstallPrompt) {
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(() => {
+      deferredInstallPrompt = null;
+      updateInstallAppUI();
+    });
+    return;
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const instructionsEl = document.getElementById('pwa-modal-instructions');
+  if (instructionsEl) {
+    instructionsEl.textContent = isIOS ? t('pwa_ios_hint') : t('pwa_desktop_hint');
+  }
+  document.getElementById('install-dialog-overlay')?.classList.remove('hidden');
+}
+
+// --- FIREBASE CONFIG & STORAGE ADAPTER ---
+const FIREBASE_API_KEY = "AIzaSyBSq0frvTs4ApUF0bp4QYvwsxqOW9fNFg0";
+const FIREBASE_PROJECT_ID = "galactica-rss-2c668";
+
+const FB_URL_AUTH_LOGIN = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIREBASE_API_KEY}`;
+const FB_URL_AUTH_REGISTER = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_API_KEY}`;
+const FB_URL_TOKEN_REFRESH = `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_API_KEY}`;
+const FB_URL_AUTH_RESET = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${FIREBASE_API_KEY}`;
+const FB_URL_DATABASE = `https://${FIREBASE_PROJECT_ID}-default-rtdb.firebaseio.com`;
+
+const storage = {
+  get: (keys, cb) => {
+    let res = {};
+    keys.forEach(k => {
+      const v = localStorage.getItem(k);
+      if (v === null) {
+        res[k] = undefined;
+        return;
+      }
+      try { res[k] = JSON.parse(v); } catch (e) { res[k] = v; }
+    });
+    cb(res);
+  },
+  set: (obj, cb) => {
+    Object.keys(obj).forEach(k => {
+      localStorage.setItem(k, typeof obj[k] === 'object' ? JSON.stringify(obj[k]) : String(obj[k]));
+    });
+    if (cb) cb();
+  },
+  remove: (keys, cb) => {
+    keys.forEach(k => localStorage.removeItem(k));
+    if (cb) cb();
+  },
+  clear: (cb) => {
+    localStorage.clear();
+    if (cb) cb();
+  }
+};
+
+let firebaseUser = null;
+let isSyncing = false;
+
+const i18n = {
+  'pt-BR': {
+    tab_timeline: "Timeline", tab_saved: "Salvos", tab_feeds: "Feeds", tab_options: "Opções",
+    support: "Apoie", title_timeline: "Notícias", title_saved: "Salvos", title_feeds: "Meus Feeds",
+    title_options: "Opções", search_timeline: "Buscar notícias...", search_saved: "Buscar nos salvos...",
+    view_toggle: "Alternar Visualização", refresh: "Atualizar Feeds", clear_timeline: "Limpar Timeline",
+    summary_title: "Resumo", play_summary: "Gerar e ouvir resumo", rewind: "Retroceder 15s", forward: "Avançar 15s",
+    empty_timeline: "Nenhuma notícia encontrada.",
+    sort_recent: "Recentes", sort_oldest: "Antigos", empty_saved: "Nenhuma notícia salva.",
+    sort_az: "A > Z", placeholder_feed: "Ex: https://site.com.br/feed", btn_add: "Adicionar",
+    opml_title: "Lista OPML", opml_import: "Importar", opml_export: "Exportar",
+    cfg_translate: "Traduzir notícias:", cfg_player: "Player de resumo:", cfg_summarize: "Resumir:",
+    cfg_voice: "Voz do resumo:", opt_ai: "Voz por IA", opt_tts: "Voz do navegador",
+    cfg_llm: "Modelo LLM:", cfg_api: "Chave API:", cfg_range: "Mostrar notícias dos últimos:",
+    opt_1d: "1 dia", opt_3d: "3 dias", opt_7d: "7 dias", cfg_interval: "Verificar atualizações a cada:",
+    opt_15m: "15 minutos", opt_1h: "1 hora", cfg_lang: "Idioma:", cfg_theme: "Tema:",
+    opt_light: "Claro", opt_dark: "Escuro", cfg_unread: "Mostrar contador de não lidas:",
+    cfg_clear_faded: "Limpar desvanecidos ao fechar:",
+    blacklist_title: "Filtro negativo (global)", blacklist_lbl: "Esconder notícias com as palavras:",
+    btn_clear: "limpar", filter_placeholder: "Adicionar filtro...", backup_title: "BACKUP TOTAL",
+    backup_import: "Importar", backup_export: "Exportar", danger_txt: "Apagar todos os dados locais armazenados (Feeds e Cache).",
+    btn_reset: "Resetar Aplicativo",
+    lang_pt: "Português", lang_en: "Inglês", lang_es: "Espanhol", lang_fr: "Francês", lang_zh: "Chinês",
+    js_checking: "...", js_added: "Feed adicionado!", js_exists: "O Feed já foi adicionado.",
+    js_invalid: "Formato de URL inválido.", js_not_feed: "A URL não é um feed válido.",
+    js_removed: "Feed removido.", js_wl_local: "Filtro positivo (local)", js_wl_lbl: "Exibir apenas notícias com as palavras:",
+    js_no_export: "Não há feeds para exportar.", js_imported: "feeds importados!",
+    js_no_new_feeds: "Nenhum feed novo encontrado.", js_err_opml: "Erro ao ler o arquivo OPML.",
+    js_updating: "Atualizando feeds...", js_updated: "Feeds atualizados!", js_no_news_sum: "Sem notícias para resumir.",
+    js_req_api: "Adicione a sua Chave API nas Opções.", js_no_new_sum: "Sem notícias novas.",
+    js_ai_limit: "Ops! Limite da IA atingido. Tente em instantes.", js_saved: "Notícia salva!",
+    js_removed_saved: "Removida dos salvos.", js_copied: "Link copiado!", js_sync: "Conteúdo sincronizado. Clique para ler no site.",
+    js_reset_conf: "Clique novamente para confirmar!",
+    js_reset_done: "Sessão encerrada! Dados resetados.", js_read_later: "Ler mais tarde", js_saved_icon: "Salva",
+    js_share: "Compartilhar", js_remove: "Remover",
+    cfg_ai_profile: "Estilo do Resumo:", opt_profile_news: "Telejornal", opt_profile_brief: "Objetivo", opt_profile_sarcastic: "Sarcástico",
+    push_to_read: "Push ⇣ para marcar como lidas",
+    cloud_sync_title: "Sincronização em Nuvem", btn_login: "Entrar", btn_register: "Criar Conta", logged_as: "Conectado como:", btn_sync_now: "Sincronizar Agora", btn_logout: "Sair",
+    btn_forgot_pwd: "Esqueci minha senha", msg_pwd_email: "Digite seu e-mail acima para recuperar.", msg_pwd_sent: "E-mail de recuperação enviado!",
+    js_no_title: "Sem título", js_login_ok: "Login concluído! Feeds sincronizados.", js_sync_ok: "Dados sincronizados na nuvem!", js_err_backup: "Erro ao ler arquivo de backup.", back_to_top: "Voltar ao topo", placeholder_email: "E-mail", placeholder_password: "Senha",
+    btn_undo: "Desfazer", js_undone: "Ação desfeita!", js_article_archived: "Notícia removida.", js_timeline_cleared: "Timeline limpa!",
+    btn_confirm_short: "Confirmar?", js_clear_conf: "Clique novamente para limpar a timeline",
+    onboard_title: "Bem-vindo ao Galactica RSS", onboard_desc: "Entre na sua conta para sincronizar seus feeds e salvos das extensões, ou adicione novos feeds abaixo.",
+    onboard_btn_login: "Entrar e Sincronizar Nuvem", onboard_btn_opml: "Importar lista OPML",
+    search_empty_prefix: "Nenhum resultado para", btn_clear_search: "Limpar busca",
+    cfg_group_account_app: "Conta & Aplicativo",
+    cfg_group_reading: "Leitura & Comportamento", cfg_group_ai: "Resumo por Inteligência Artificial",
+    cfg_group_appearance: "Aparência & Atualização", cfg_group_data: "Filtros & Backup",
+    ctx_listen_summary: "Ouvir resumo detalhado", ctx_copy_link: "Copiar link", ctx_more_actions: "Mais opções",
+    pwa_install_lbl: "Atalho / Aplicativo:", pwa_install_btn: "Instalar App", pwa_installed_badge: "Instalado ✓",
+    pwa_installed: "Aplicativo instalado com sucesso!", pwa_modal_title: "Instalar como Aplicativo",
+    pwa_ios_hint: "No Safari (iPhone/iPad), toque no ícone de Compartilhar na barra inferior e escolha 'Adicionar à Tela de Início'.",
+    pwa_desktop_hint: "No menu do navegador (⋮ ou ícone na barra de endereços), selecione 'Instalar Galactica RSS' ou 'Adicionar à tela inicial' para usar como aplicativo."
+  },
+  'en': {
+    tab_timeline: "Timeline", tab_saved: "Saved", tab_feeds: "Feeds", tab_options: "Options",
+    support: "Support", title_timeline: "News", title_saved: "Saved", title_feeds: "My Feeds",
+    title_options: "Options", search_timeline: "Search news...", search_saved: "Search saved...",
+    view_toggle: "Toggle View", refresh: "Refresh Feeds", clear_timeline: "Clear Timeline",
+    summary_title: "Summary", play_summary: "Generate and listen to summary", rewind: "Rewind 15s", forward: "Forward 15s",
+    empty_timeline: "No news found.",
+    sort_recent: "Recent", sort_oldest: "Oldest", empty_saved: "No saved news.",
+    sort_az: "A > Z", placeholder_feed: "Ex: https://site.com/feed", btn_add: "Add",
+    opml_title: "OPML List", opml_import: "Import", opml_export: "Export",
+    cfg_translate: "Translate news:", cfg_player: "Summary player:", cfg_summarize: "Summarize:",
+    cfg_voice: "Summary voice:", opt_ai: "AI Voice", opt_tts: "Browser Voice",
+    cfg_llm: "LLM Model:", cfg_api: "API Key:", cfg_range: "Show news from the last:",
+    opt_1d: "1 day", opt_3d: "3 days", opt_7d: "7 days", cfg_interval: "Check for updates every:",
+    opt_15m: "15 minutes", opt_1h: "1 hour", cfg_lang: "Language:", cfg_theme: "Theme:",
+    opt_light: "Light", opt_dark: "Dark", cfg_unread: "Show unread counter:",
+    cfg_clear_faded: "Clear faded on exit:",
+    blacklist_title: "Negative filter (global)", blacklist_lbl: "Hide news with words:",
+    btn_clear: "clear", filter_placeholder: "Add filter...", backup_title: "FULL BACKUP",
+    backup_import: "Import", backup_export: "Export", danger_txt: "Delete all local stored data (Feeds and Cache).",
+    btn_reset: "Reset App",
+    lang_pt: "Portuguese", lang_en: "English", lang_es: "Spanish", lang_fr: "French", lang_zh: "Chinese",
+    js_checking: "...", js_added: "Feed added!", js_exists: "Feed already added.",
+    js_invalid: "Invalid URL format.", js_not_feed: "URL is not a valid feed.",
+    js_removed: "Feed removed.", js_wl_local: "Positive filter (local)", js_wl_lbl: "Show only news with words:",
+    js_no_export: "No feeds to export.", js_imported: "feeds imported!",
+    js_no_new_feeds: "No new feeds found.", js_err_opml: "Error reading OPML file.",
+    js_updating: "Updating feeds...", js_updated: "Feeds updated!", js_no_news_sum: "No news to summarize.",
+    js_req_api: "Add your API Key in Options.", js_no_new_sum: "No new news.",
+    js_ai_limit: "Oops! AI limit reached. Try again in a moment.", js_saved: "News saved!",
+    js_removed_saved: "Removed from saved.", js_copied: "Link copied!", js_sync: "Synchronized content. Click to read on the site.",
+    js_reset_conf: "Click again to confirm reset!",
+    js_reset_done: "Session closed! Data reset.", js_read_later: "Read later", js_saved_icon: "Saved",
+    js_share: "Share", js_remove: "Remove",
+    cfg_ai_profile: "Summary Style:", opt_profile_news: "TV News", opt_profile_brief: "Objective", opt_profile_sarcastic: "Sarcastic",
+    push_to_read: "Push ⇣ to mark as read",
+    cloud_sync_title: "Cloud Sync", btn_login: "Login", btn_register: "Sign Up", logged_as: "Logged in as:", btn_sync_now: "Sync Now", btn_logout: "Logout",
+    btn_forgot_pwd: "Forgot my password", msg_pwd_email: "Enter your email above to recover.", msg_pwd_sent: "Recovery email sent!",
+    js_no_title: "Untitled", js_login_ok: "Login complete! Feeds synced.", js_sync_ok: "Data synced to cloud!", js_err_backup: "Error reading backup file.", back_to_top: "Back to top", placeholder_email: "Email", placeholder_password: "Password",
+    btn_undo: "Undo", js_undone: "Action undone!", js_article_archived: "Article removed.", js_timeline_cleared: "Timeline cleared!",
+    btn_confirm_short: "Confirm?", js_clear_conf: "Click again to clear timeline",
+    onboard_title: "Welcome to Galactica RSS", onboard_desc: "Sign in to sync your feeds and saved items from the browser extensions, or import an OPML list.",
+    onboard_btn_login: "Sign In & Cloud Sync", onboard_btn_opml: "Import OPML list",
+    search_empty_prefix: "No results for", btn_clear_search: "Clear search",
+    cfg_group_account_app: "Account & App",
+    cfg_group_reading: "Reading & Behavior", cfg_group_ai: "AI Summary",
+    cfg_group_appearance: "Appearance & Updates", cfg_group_data: "Filters & Backup",
+    ctx_listen_summary: "Listen to detailed summary", ctx_copy_link: "Copy link", ctx_more_actions: "More options",
+    pwa_install_lbl: "App Shortcut:", pwa_install_btn: "Install App", pwa_installed_badge: "Installed ✓",
+    pwa_installed: "App installed successfully!", pwa_modal_title: "Install as App",
+    pwa_ios_hint: "In Safari (iPhone/iPad), tap the Share icon at the bottom bar and select 'Add to Home Screen'.",
+    pwa_desktop_hint: "In your browser menu (⋮ or the address bar icon), select 'Install Galactica RSS' or 'Add to Home Screen' to use it like a native app."
+  },
+  'es': {
+    tab_timeline: "Timeline", tab_saved: "Guardados", tab_feeds: "Feeds", tab_options: "Opciones",
+    support: "Apoyar", title_timeline: "Noticias", title_saved: "Guardados", title_feeds: "Mis Feeds",
+    title_options: "Opciones", search_timeline: "Buscar noticias...", search_saved: "Buscar guardados...",
+    view_toggle: "Cambiar Vista", refresh: "Actualizar Feeds", clear_timeline: "Limpiar Timeline",
+    summary_title: "Resumen", play_summary: "Generar y escuchar resumen", rewind: "Retroceder 15s", forward: "Avanzar 15s",
+    empty_timeline: "No se encontraron noticias.",
+    sort_recent: "Recientes", sort_oldest: "Antiguos", empty_saved: "No hay noticias guardadas.",
+    sort_az: "A > Z", placeholder_feed: "Ej: https://sitio.com/feed", btn_add: "Agregar",
+    opml_title: "Lista OPML", opml_import: "Importar", opml_export: "Exportar",
+    cfg_translate: "Traducir noticias:", cfg_player: "Reproductor de resumen:", cfg_summarize: "Resumen:",
+    cfg_voice: "Voz del resumen:", opt_ai: "Voz por IA", opt_tts: "Voz del navegador",
+    cfg_llm: "Modelo LLM:", cfg_api: "Clave API:", cfg_range: "Mostrar noticias de los últimos:",
+    opt_1d: "1 día", opt_3d: "3 días", opt_7d: "7 días", cfg_interval: "Buscar actualizaciones cada:",
+    opt_15m: "15 minutos", opt_1h: "1 hora", cfg_lang: "Idioma:", cfg_theme: "Tema:",
+    opt_light: "Claro", opt_dark: "Oscuro", cfg_unread: "Mostrar contador de no leídas:",
+    cfg_clear_faded: "Limpiar desvanecidos al salir:",
+    blacklist_title: "Filtro negativo (global)", blacklist_lbl: "Ocultar noticias con palabras:",
+    btn_clear: "limpiar", filter_placeholder: "Agregar filtro...", backup_title: "COPIA DE SEGURIDAD",
+    backup_import: "Importar", backup_export: "Exportar", danger_txt: "Borrar todos los datos locales almacenados.",
+    btn_reset: "Restablecer App",
+    lang_pt: "Portugués", lang_en: "Inglés", lang_es: "Español", lang_fr: "Francés", lang_zh: "Chino",
+    js_checking: "...", js_added: "¡Feed agregado!", js_exists: "El Feed ya ha sido agregado.",
+    js_invalid: "Formato de URL inválido.", js_not_feed: "La URL no es un feed válido.",
+    js_removed: "Feed eliminado.", js_wl_local: "Filtro positivo (local)", js_wl_lbl: "Mostrar solo noticias con palabras:",
+    js_no_export: "No hay feeds para exportar.", js_imported: "¡feeds importados!",
+    js_no_new_feeds: "No se encontraron feeds nuevos.", js_err_opml: "Error al leer archivo OPML.",
+    js_updating: "Actualizando feeds...", js_updated: "¡Feeds actualizados!", js_no_news_sum: "No hay noticias para resumir.",
+    js_req_api: "Añade tu Clave API en Opciones.", js_no_new_sum: "No hay noticias nuevas.",
+    js_ai_limit: "¡Uy! Límite de IA alcanzado. Intenta luego.", js_saved: "¡Noticia guardada!",
+    js_removed_saved: "Eliminada de guardados.", js_copied: "¡Enlace copiado!", js_sync: "Contenido sincronizado. Clic para leer en el sitio.",
+    js_reset_conf: "¡Haz clic para confirmar el restablecimiento!",
+    js_reset_done: "¡Sesión cerrada! Datos restablecidos.", js_read_later: "Leer más tarde", js_saved_icon: "Guardada",
+    js_share: "Compartir", js_remove: "Eliminar",
+    cfg_ai_profile: "Estilo de Resumen:", opt_profile_news: "Telediario", opt_profile_brief: "Objetivo", opt_profile_sarcastic: "Sarcástico",
+    push_to_read: "Push ⇣ para marcar como leídas",
+    cloud_sync_title: "Sincronización en la Nube", btn_login: "Entrar", btn_register: "Crear Cuenta", logged_as: "Conectado como:", btn_sync_now: "Sincronizar Ahora", btn_logout: "Salir",
+    btn_forgot_pwd: "Olvidé mi contraseña", msg_pwd_email: "Ingresa tu email arriba para recuperar.", msg_pwd_sent: "¡Correo de recuperación enviado!",
+    js_no_title: "Sin título", js_login_ok: "¡Inicio de sesión exitoso! Feeds sincronizados.", js_sync_ok: "¡Datos sincronizados en la nube!", js_err_backup: "Error al leer archivo de copia de seguridad.", back_to_top: "Volver arriba", placeholder_email: "Correo electrónico", placeholder_password: "Contraseña",
+    btn_undo: "Deshacer", js_undone: "¡Acción deshecha!", js_article_archived: "Noticia eliminada.", js_timeline_cleared: "¡Timeline limpiada!",
+    btn_confirm_short: "¿Confirmar?", js_clear_conf: "Haz clic de nuevo para limpiar la timeline",
+    onboard_title: "Bienvenido a Galactica RSS", onboard_desc: "Inicia sesión para sincronizar tus feeds y guardados de las extensiones, o importa un archivo OPML.",
+    onboard_btn_login: "Iniciar Sesión y Sincronizar", onboard_btn_opml: "Importar lista OPML",
+    search_empty_prefix: "Sin resultados para", btn_clear_search: "Limpiar búsqueda",
+    cfg_group_account_app: "Cuenta y Aplicación",
+    cfg_group_reading: "Lectura y Comportamiento", cfg_group_ai: "Resumen por IA",
+    cfg_group_appearance: "Apariencia y Actualización", cfg_group_data: "Filtros y Copia",
+    ctx_listen_summary: "Escuchar resumen detallado", ctx_copy_link: "Copiar enlace", ctx_more_actions: "Más opciones",
+    pwa_install_lbl: "Acceso directo / App:", pwa_install_btn: "Instalar App", pwa_installed_badge: "Instalado ✓",
+    pwa_installed: "¡Aplicación instalada con éxito!", pwa_modal_title: "Instalar como Aplicación",
+    pwa_ios_hint: "En Safari (iPhone/iPad), toca el icono Compartir en la barra inferior y elige 'Añadir a pantalla de inicio'.",
+    pwa_desktop_hint: "En el menú del navegador (⋮ o en la barra de direcciones), selecciona 'Instalar Galactica RSS' o 'Añadir a pantalla de inicio'."
+  },
+  'fr': {
+    tab_timeline: "Timeline", tab_saved: "Enregistrés", tab_feeds: "Flux", tab_options: "Options",
+    support: "Soutenir", title_timeline: "Actualités", title_saved: "Enregistrés", title_feeds: "Mes Flux",
+    title_options: "Options", search_timeline: "Rechercher...", search_saved: "Chercher enregistrés...",
+    view_toggle: "Changer de Vue", refresh: "Actualiser Flux", clear_timeline: "Effacer Timeline",
+    summary_title: "Résumé", play_summary: "Générer et écouter le résumé", rewind: "Reculer 15s", forward: "Avancer 15s",
+    empty_timeline: "Aucune actualité trouvée.",
+    sort_recent: "Récents", sort_oldest: "Anciens", empty_saved: "Aucune actualité enregistrée.",
+    sort_az: "A > Z", placeholder_feed: "Ex: https://site.com/feed", btn_add: "Ajouter",
+    opml_title: "Liste OPML", opml_import: "Importer", opml_export: "Exporter",
+    cfg_translate: "Traduire la Timeline:", cfg_player: "Lecteur résumé:", cfg_summarize: "Résumer:",
+    cfg_voice: "Voix du résumé:", opt_ai: "Voix IA", opt_tts: "Voix du navigateur",
+    cfg_llm: "Modèle LLM:", cfg_api: "Clé API:", cfg_range: "Afficher actualités depuis:",
+    opt_1d: "1 jour", opt_3d: "3 jours", opt_7d: "7 jours", cfg_interval: "Vérifier les mises à jour:",
+    opt_15m: "15 minutes", opt_1h: "1 heure", cfg_lang: "Langue:", cfg_theme: "Thème:",
+    opt_light: "Clair", opt_dark: "Sombre", cfg_unread: "Afficher compteur non lues:",
+    cfg_clear_faded: "Effacer les fondus en quittant:",
+    blacklist_title: "Filtre négatif (global)", blacklist_lbl: "Masquer actualités avec mots:",
+    btn_clear: "effacer", filter_placeholder: "Ajouter un filtre...", backup_title: "SAUVEGARDE",
+    backup_import: "Importer", backup_export: "Exporter", danger_txt: "Effacer toutes les données locales.",
+    btn_reset: "Réinitialiser",
+    lang_pt: "Portugais", lang_en: "Anglais", lang_es: "Espagnol", lang_fr: "Français", lang_zh: "Chinois",
+    js_checking: "...", js_added: "Flux ajouté !", js_exists: "Le flux a déjà été ajouté.",
+    js_invalid: "Format d'URL invalide.", js_not_feed: "L'URL n'est pas un flux valide.",
+    js_removed: "Flux supprimé.", js_wl_local: "Filtre positif (local)", js_wl_lbl: "Afficher actualités avec mots:",
+    js_no_export: "Aucun flux à exporter.", js_imported: "flux importés !",
+    js_no_new_feeds: "Aucun nouveau flux trouvé.", js_err_opml: "Erreur lecture fichier OPML.",
+    js_updating: "Mise à jour...", js_updated: "Flux actualisés !", js_no_news_sum: "Aucune actualité à résumer.",
+    js_req_api: "Ajoutez votre Clé API dans Options.", js_no_new_sum: "Pas de nouvelles actualités.",
+    js_ai_limit: "Oups ! Limite IA atteinte. Réessayez.", js_saved: "Actualité enregistrée !",
+    js_removed_saved: "Supprimée des enregistrés.", js_copied: "Lien copié !", js_sync: "Contenu synchronisé. Cliquez pour lire.",
+    js_reset_conf: "Cliquez à nouveau pour confirmer!",
+    js_reset_done: "Session terminée ! Données réinitialisées.", js_read_later: "Lire plus tard", js_saved_icon: "Enregistrée",
+    js_share: "Partager", js_remove: "Supprimer",
+    cfg_ai_profile: "Style de Résumé:", opt_profile_news: "Journal Télévisé", opt_profile_brief: "Objectif", opt_profile_sarcastic: "Sarcastique",
+    push_to_read: "Push ⇣ pour marquer comme lues",
+    cloud_sync_title: "Synchronisation Cloud", btn_login: "Connexion", btn_register: "S'inscrire", logged_as: "Connecté en tant que:", btn_sync_now: "Synchroniser", btn_logout: "Déconnexion",
+    btn_forgot_pwd: "Mot de passe oublié", msg_pwd_email: "Entrez votre email ci-dessus pour récupérer.", msg_pwd_sent: "E-mail de récupération envoyé !",
+    js_no_title: "Sans titre", js_login_ok: "Connexion réussie ! Flux synchronisés.", js_sync_ok: "Données synchronisées dans le cloud !", js_err_backup: "Erreur lors de la lecture du fichier de sauvegarde.", back_to_top: "Haut de page", placeholder_email: "E-mail", placeholder_password: "Mot de passe",
+    btn_undo: "Annuler", js_undone: "Action annulée !", js_article_archived: "Actualité supprimée.", js_timeline_cleared: "Timeline effacée !",
+    btn_confirm_short: "Confirmer ?", js_clear_conf: "Cliquez à nouveau pour effacer la timeline",
+    onboard_title: "Bienvenue sur Galactica RSS", onboard_desc: "Connectez-vous pour synchroniser vos flux et enregistrés depuis vos extensions, ou importez un fichier OPML.",
+    onboard_btn_login: "Connexion & Sync Cloud", onboard_btn_opml: "Importer une liste OPML",
+    search_empty_prefix: "Aucun résultat pour", btn_clear_search: "Effacer la recherche",
+    cfg_group_account_app: "Compte & Application",
+    cfg_group_reading: "Lecture & Comportement", cfg_group_ai: "Résumé par IA",
+    cfg_group_appearance: "Apparence & Mises à jour", cfg_group_data: "Filtres & Sauvegarde",
+    ctx_listen_summary: "Écouter le résumé détaillé", ctx_copy_link: "Copier le lien", ctx_more_actions: "Plus d'options",
+    pwa_install_lbl: "Raccourci / Application :", pwa_install_btn: "Installer l'app", pwa_installed_badge: "Installée ✓",
+    pwa_installed: "Application installée avec succès !", pwa_modal_title: "Installer comme Application",
+    pwa_ios_hint: "Dans Safari (iPhone/iPad), appuyez sur Partager en bas de l'écran puis sur « Sur l'écran d'accueil ».",
+    pwa_desktop_hint: "Dans le menu du navigateur (⋮ ou barre d'adresse), sélectionnez « Installer Galactica RSS »."
+  },
+  'zh': {
+    tab_timeline: "时间线", tab_saved: "已保存", tab_feeds: "订阅源", tab_options: "选项",
+    support: "支持", title_timeline: "新闻", title_saved: "已保存", title_feeds: "我的订阅源",
+    title_options: "选项", search_timeline: "搜索新闻...", search_saved: "搜索已保存...",
+    view_toggle: "切换视图", refresh: "刷新订阅源", clear_timeline: "清空时间线",
+    summary_title: "摘要", play_summary: "生成并收听摘要", rewind: "后退15秒", forward: "前进15秒",
+    empty_timeline: "未找到新闻。",
+    sort_recent: "最新", sort_oldest: "最旧", empty_saved: "没有已保存的新闻。",
+    sort_az: "A > Z", placeholder_feed: "例如：https://site.com/feed", btn_add: "添加",
+    opml_title: "OPML 列表", opml_import: "导入", opml_export: "导出",
+    cfg_translate: "翻译时间线：", cfg_player: "摘要播放器：", cfg_summarize: "总结：",
+    cfg_voice: "摘要语音：", opt_ai: "AI 语音", opt_tts: "浏览器语音",
+    cfg_llm: "LLM 模型：", cfg_api: "API 密钥：", cfg_range: "显示最近几天的新闻：",
+    opt_1d: "1天", opt_3d: "3天", opt_7d: "7天", cfg_interval: "检查更新的频率：",
+    opt_15m: "15 分钟", opt_1h: "1 小时", cfg_lang: "语言：", cfg_theme: "主题：",
+    opt_light: "浅色", opt_dark: "深色", cfg_unread: "显示未读计数：",
+    cfg_clear_faded: "退出时清除已褪色:",
+    blacklist_title: "负向过滤（全局）", blacklist_lbl: "隐藏包含以下词语的新闻：",
+    btn_clear: "清除", filter_placeholder: "添加过滤器...", backup_title: "完整备份",
+    backup_import: "导入", backup_export: "导出", danger_txt: "删除所有本地存储的数据。",
+    btn_reset: "重置应用",
+    lang_pt: "葡萄牙语", lang_en: "英语", lang_es: "西班牙语", lang_fr: "法语", lang_zh: "中文",
+    js_checking: "...", js_added: "已添加订阅源！", js_exists: "该订阅源已添加。",
+    js_invalid: "无效的 URL 格式。", js_not_feed: "该 URL 不是有效的订阅源。",
+    js_removed: "订阅源已删除。", js_wl_local: "正向过滤（本地）", js_wl_lbl: "仅显示包含以下词语的新闻：",
+    js_no_export: "没有要导出的订阅源。", js_imported: "个订阅源已导入！",
+    js_no_new_feeds: "未找到新的订阅源。", js_err_opml: "读取 OPML 文件时出错。",
+    js_updating: "正在更新订阅源...", js_updated: "订阅源已更新！", js_no_news_sum: "没有要总结的新闻。",
+    js_req_api: "在选项中添加您的 API 密钥。", js_no_new_sum: "没有新新闻。",
+    js_ai_limit: "哎呀！达到 AI 限制。请稍后再试。", js_saved: "新闻已保存！",
+    js_removed_saved: "已从保存中移除。", js_copied: "链接已复制！", js_sync: "内容已同步。点击在网站上阅读。",
+    js_reset_conf: "再次点击以确认重置！",
+    js_reset_done: "会话已关闭！数据已重置。", js_read_later: "稍后阅读", js_saved_icon: "已保存",
+    js_share: "分享", js_remove: "移除",
+    cfg_ai_profile: "摘要风格:", opt_profile_news: "新闻联播", opt_profile_brief: "客观", opt_profile_sarcastic: "讽刺",
+    push_to_read: "Push ⇣ 标记为已读",
+    cloud_sync_title: "云同步", btn_login: "登录", btn_register: "注册", logged_as: "当前登录：", btn_sync_now: "立即同步", btn_logout: "退出",
+    btn_forgot_pwd: "忘记密码", msg_pwd_email: "在上方输入您的电子邮件以找回。", msg_pwd_sent: "恢复邮件已发送！",
+    js_no_title: "无标题", js_login_ok: "登录完成！订阅源已同步。", js_sync_ok: "数据已同步到云端！", js_err_backup: "读取备份文件时出错。", back_to_top: "返回顶部", placeholder_email: "电子邮件", placeholder_password: "密码",
+    btn_undo: "撤销", js_undone: "操作已撤销！", js_article_archived: "新闻已移除。", js_timeline_cleared: "时间线已清空！",
+    btn_confirm_short: "确认？", js_clear_conf: "再次点击以清空时间线",
+    onboard_title: "欢迎使用 Galactica RSS", onboard_desc: "登录账号以同步浏览器扩展中的订阅源和已保存文章，或导入 OPML 列表。",
+    onboard_btn_login: "登录并云同步", onboard_btn_opml: "导入 OPML 列表",
+    search_empty_prefix: "未找到相关结果：", btn_clear_search: "清除搜索",
+    cfg_group_account_app: "账号与应用",
+    cfg_group_reading: "阅读与行为", cfg_group_ai: "AI 智能摘要",
+    cfg_group_appearance: "外观与更新", cfg_group_data: "过滤器与备份",
+    ctx_listen_summary: "收听详细摘要", ctx_copy_link: "复制链接", ctx_more_actions: "更多选项",
+    pwa_install_lbl: "应用快捷方式：", pwa_install_btn: "安装应用", pwa_installed_badge: "已安装 ✓",
+    pwa_installed: "应用安装成功！", pwa_modal_title: "安装为应用",
+    pwa_ios_hint: "在 Safari（iPhone/iPad）中，点击底部的分享图标并选择“添加到主屏幕”。",
+    pwa_desktop_hint: "在浏览器菜单（⋮ 或地址栏图标）中选择“安装 Galactica RSS”或“添加到主屏幕”。"
+  }
+};
+
+let config = {
+  articleRange: 3, updateInterval: 15, theme: 'dark', language: 'pt-BR',
+  showUnread: false, clearFaded: true, wordFilter: '',
+  showAi: true, aiSummaryType: 'saved', aiProfile: 'news', audioType: 'ai_voice',
+  llmModel: 'gemini-2.5-flash', apiKey: '', viewMode: 'cards', autoTranslate: false,
+  feedSortOrder: 'recent', salvosSortOrder: 'recent', ttsSpeed: 1.0,
+  feedCategories: {}, customCategories: [], feedFilters: {}
+};
+
+let feeds = [];
+let articles = [];
+let savedArticles = [];
+let readArticles = [];
+let hiddenArticles = [];
+let lastUpdate = 0;
+let searchTimelineStr = '';
+let searchSalvosStr = '';
+let feedHealthStatus = {};
+let contextCardTarget = null;
+let activeSingleSummaryArticle = null;
+const singleSummaryCache = new Map();
+
+// Trava global de gesto único no trackpad
+const wheelGestureLock = {
+  activeCard: null,
+  lockedUntilIdle: false,
+  idleTimer: null
+};
+
+let currentAudio = null;
+let currentUtterance = null;
+let fullTtsText = "";
+let currentTtsIndex = 0;
+let isGeneratingAudio = false;
+
+let tabBtns, tabContents, btnRefresh, btnClear, timelineList, btnAddFeed;
+let feedInput, feedList, btnResetData, toastEl, feedSortSelect, salvosSortSelect;
+let btnViewToggleTimeline, btnViewToggleSalvos, searchTimelineInput, searchSalvosInput;
+let aiSummaryContainer, toggleApiKeyBtn, inputApiKey, btnPlaySummary, btnRewind, btnForward;
+let playerProgress, aiIcon, speedBtns, btnWordFilters, wordFiltersContent;
+let configRange, configInterval, configTheme, configLanguage, configAiProfile;
+let btnOpmlExport, opmlInput, btnExportBackup, inputImportBackup;
+let configAudioTypeEl, configSummaryType, configClearFaded, autoTranslateEl;
+let contentContainer, btnBackToTop;
+
+const ICON_GRID = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>`;
+const ICON_LIST = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line class="list
