@@ -3454,10 +3454,8 @@ async function handleIncomingSharedTarget() {
   const looksLikeFeed = /(\/feed\/?|\/rss\/?|\.rss|\.xml|\.atom)(\?.*)?$/i.test(shared.url);
   if (looksLikeFeed) {
     try {
-      const xmlString = await fetchXML(shared.url);
-      const parser = new DOMParser();
-      const xml = parser.parseFromString(xmlString, 'text/xml');
-      if (xml.querySelector('rss, feed, channel, item, entry')) {
+      const parsedArticles = await fetchAndParseFeed(shared.url);
+      if (parsedArticles && parsedArticles.length > 0) {
         if (!feeds.includes(shared.url)) {
           feeds.push(shared.url);
           if (!config.feedCategories) config.feedCategories = {};
@@ -3477,423 +3475,7 @@ async function handleIncomingSharedTarget() {
   }
 
   if (savedArticles.some(a => a.link === shared.url)) {
-    showToast(t('share_already_saved'));
-    return true;
-  }
-
-  const article = await fetchSharedLinkMetadata(shared);
-  savedArticles.unshift(article);
-  saveData();
-  renderSalvos();
-  showToast(t('js_saved'));
-  return true;
-}
-
-let saveDataTimeout;
-async function loadData() {
-  return new Promise((resolve) => {
-    storage.get(['firebaseUser', 'feeds', 'config', 'articles', 'savedArticles', 'readArticles', 'hiddenArticles', 'lastUpdate', 'feedHealthStatus'], (res) => {
-      if (res.firebaseUser) {
-        firebaseUser = res.firebaseUser;
-        updateAuthUI();
-      }
-      let rawFeeds = res.feeds || [];
-      feeds = rawFeeds.filter(f => typeof f === 'string' && !f.includes(' ') && f.includes('.'));
-      if (res.config) config = { ...config, ...res.config };
-      if (!config.feedCategories) config.feedCategories = {};
-      if (!config.customCategories) config.customCategories = [];
-      if (!config.feedFilters) config.feedFilters = {};
-
-      articles = ensureArray(res.articles);
-      savedArticles = ensureArray(res.savedArticles);
-      readArticles = ensureArray(res.readArticles);
-      hiddenArticles = ensureArray(res.hiddenArticles);
-      lastUpdate = res.lastUpdate || 0;
-      feedHealthStatus = res.feedHealthStatus || {};
-      resolve();
-    });
-  });
-}
-
-function saveData() {
-  clearTimeout(saveDataTimeout);
-  saveDataTimeout = setTimeout(() => {
-    storage.set({ feeds, config, articles, savedArticles, readArticles, hiddenArticles, lastUpdate, feedHealthStatus }, () => {
-      if (firebaseUser && !isSyncing) uploadToFirebase();
-    });
-  }, 800);
-}
-
-function autoPurgeCache() {
-  const PURGE_DAYS = 30;
-  const cutoffTimestamp = Date.now() - (PURGE_DAYS * 24 * 60 * 60 * 1000);
-
-  const savedLinks = new Set(savedArticles.map(a => a.link));
-  const initialArticleCount = articles.length;
-
-  articles = articles.filter(a => a.timestamp >= cutoffTimestamp || savedLinks.has(a.link));
-
-  const validLinks = new Set([...articles.map(a => a.link), ...savedLinks]);
-  readArticles = readArticles.filter(link => validLinks.has(link));
-  hiddenArticles = hiddenArticles.filter(link => validLinks.has(link));
-
-  if (articles.length !== initialArticleCount) {
-    saveData();
-  }
-}
-
-function setupConfigEventListeners() {
-  if (configRange) configRange.addEventListener('change', (e) => { config.articleRange = parseInt(e.target.value, 10); saveData(); renderTimeline(); });
-  if (configInterval) configInterval.addEventListener('change', (e) => { config.updateInterval = parseInt(e.target.value, 10); saveData(); });
-  if (configTheme) configTheme.addEventListener('change', (e) => { config.theme = e.target.value; applyTheme(config.theme); saveData(); });
-  if (configSummaryType) configSummaryType.addEventListener('change', (e) => { config.aiSummaryType = e.target.value; saveData(); });
-  if (configAiProfile) configAiProfile.addEventListener('change', (e) => { config.aiProfile = e.target.value; saveData(); });
-
-  if (feedSortSelect) {
-    feedSortSelect.addEventListener('change', (e) => {
-      config.feedSortOrder = e.target.value;
-      saveData();
-      renderFeeds();
-    });
-  }
-
-  if (salvosSortSelect) {
-    salvosSortSelect.addEventListener('change', (e) => {
-      config.salvosSortOrder = e.target.value;
-      saveData();
-      renderSalvos();
-    });
-  }
-
-  if (configLanguage) {
-    configLanguage.addEventListener('change', (e) => {
-      config.language = e.target.value;
-      articles.forEach(a => { delete a.translatedTitle; delete a.translatedSummary; });
-      savedArticles.forEach(a => { delete a.translatedTitle; delete a.translatedSummary; });
-      saveData();
-      applyTranslations();
-      renderTimeline();
-      renderSalvos();
-      renderFeeds();
-      updateAuthUI();
-    });
-  }
-
-  if (configAudioTypeEl) configAudioTypeEl.addEventListener('change', (e) => { config.audioType = e.target.value; saveData(); resetPlayer(); });
-
-  if (configClearFaded) {
-    configClearFaded.addEventListener('change', (e) => {
-      config.clearFaded = e.target.checked;
-      saveData();
-      renderTimeline();
-    });
-  }
-
-  const showAiEl = document.getElementById('config-show-ai');
-  if (showAiEl) {
-    showAiEl.addEventListener('change', (e) => {
-      config.showAi = e.target.checked;
-      aiSummaryContainer.style.display = config.showAi ? 'flex' : 'none';
-      saveData();
-    });
-  }
-
-  if (autoTranslateEl) {
-    autoTranslateEl.addEventListener('change', (e) => {
-      config.autoTranslate = e.target.checked;
-      saveData();
-      renderTimeline();
-      renderSalvos();
-    });
-  }
-
-  const llmModelEl = document.getElementById('config-llm-model');
-  if (llmModelEl) llmModelEl.addEventListener('change', (e) => { config.llmModel = e.target.value; saveData(); });
-
-  if (inputApiKey) inputApiKey.addEventListener('input', (e) => { config.apiKey = e.target.value; saveData(); });
-
-  const unreadEl = document.getElementById('config-unread');
-  if (unreadEl) unreadEl.addEventListener('change', (e) => { config.showUnread = e.target.checked; saveData(); renderTimeline(); });
-
-  if (toggleApiKeyBtn) {
-    toggleApiKeyBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      if (inputApiKey.type === 'password') {
-        inputApiKey.type = 'text';
-        toggleApiKeyBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path></svg>`;
-      } else {
-        inputApiKey.type = 'password';
-        toggleApiKeyBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
-      }
-    });
-  }
-
-  document.getElementById('btn-install-pwa')?.addEventListener('click', () => triggerInstallApp());
-  document.getElementById('btn-close-install-dialog')?.addEventListener('click', () => {
-    document.getElementById('install-dialog-overlay')?.classList.add('hidden');
-  });
-  document.getElementById('btn-ok-install-dialog')?.addEventListener('click', () => {
-    document.getElementById('install-dialog-overlay')?.classList.add('hidden');
-  });
-
-  let resetConfirmState = false;
-  if (btnResetData) {
-    btnResetData.addEventListener('click', () => {
-      if (!resetConfirmState) {
-        resetConfirmState = true;
-        btnResetData.textContent = t('js_reset_conf');
-        btnResetData.style.backgroundColor = '#d93025';
-        setTimeout(() => {
-          resetConfirmState = false;
-          btnResetData.textContent = t('btn_reset');
-          btnResetData.style.backgroundColor = '';
-        }, 4000);
-        return;
-      }
-      resetConfirmState = false;
-      btnResetData.textContent = t('btn_reset');
-      btnResetData.style.backgroundColor = '';
-
-      feeds = []; articles = []; savedArticles = []; readArticles = []; hiddenArticles = []; lastUpdate = 0; feedHealthStatus = {};
-      config = {
-        articleRange: 3, updateInterval: 15, theme: 'dark', language: 'pt-BR',
-        showUnread: false, clearFaded: true, wordFilter: '',
-        showAi: true, aiSummaryType: 'saved', aiProfile: 'news', audioType: 'ai_voice',
-        llmModel: 'gemini-2.5-flash', apiKey: '', viewMode: 'cards', autoTranslate: false,
-        feedSortOrder: 'recent', salvosSortOrder: 'recent', ttsSpeed: 1.0,
-        feedCategories: {}, customCategories: [], feedFilters: {}
-      };
-      storage.clear(() => {
-        saveData();
-        applyConfig();
-        renderFeeds();
-        renderTimeline();
-        renderSalvos();
-        setupTagInputs();
-        resetPlayer();
-        showToast(t('js_reset_done'));
-      });
-    });
-  }
-}
-
-function applyConfig() {
-  applyTheme(config.theme);
-  applyTranslations();
-  if (configRange) configRange.value = String(config.articleRange || 3);
-  if (configInterval) configInterval.value = String(config.updateInterval || 15);
-  if (configTheme) configTheme.value = config.theme;
-  if (configLanguage) configLanguage.value = config.language || 'pt-BR';
-  if (configAudioTypeEl) configAudioTypeEl.value = config.audioType || 'ai_voice';
-  if (configSummaryType) configSummaryType.value = config.aiSummaryType || 'saved';
-  if (configAiProfile) configAiProfile.value = config.aiProfile || 'news';
-  if (configClearFaded) configClearFaded.checked = config.clearFaded !== false;
-
-  if (autoTranslateEl) {
-    autoTranslateEl.checked = config.autoTranslate;
-    autoTranslateEl.disabled = false;
-    autoTranslateEl.parentElement.style.opacity = '1';
-  }
-
-  const showAiEl = document.getElementById('config-show-ai');
-  if (showAiEl) {
-    showAiEl.checked = config.showAi;
-    aiSummaryContainer.style.display = config.showAi ? 'flex' : 'none';
-  }
-
-  const llmModelEl = document.getElementById('config-llm-model');
-  if (llmModelEl) llmModelEl.value = config.llmModel;
-
-  if (inputApiKey) inputApiKey.value = config.apiKey;
-
-  const unreadEl = document.getElementById('config-unread');
-  if (unreadEl) unreadEl.checked = config.showUnread;
-
-  if (feedSortSelect) feedSortSelect.value = config.feedSortOrder || 'recent';
-  if (salvosSortSelect) salvosSortSelect.value = config.salvosSortOrder || 'recent';
-
-  updateSpeedUI();
-  renderTags('wordFilter', 'container-filter');
-  applyViewModeIcons();
-  updateAuthUI();
-}
-
-function applyTheme(theme) {
-  document.body.dataset.theme = theme;
-  const metaTheme = document.getElementById('meta-theme-color');
-  if (metaTheme) {
-    metaTheme.setAttribute('content', theme === 'dark' ? '#131314' : '#f1f3f4');
-  }
-}
-
-function setupOpmlListeners() {
-  if (btnOpmlExport) {
-    btnOpmlExport.addEventListener('click', () => {
-      if (feeds.length === 0) return showToast(t('js_no_export'));
-      let opml = `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="1.0">\n  <head>\n    <title>Meus Feeds RSS</title>\n  </head>\n  <body>\n`;
-      feeds.forEach(url => {
-        const escapedUrl = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
-        opml += `    <outline type="rss" xmlUrl="${escapedUrl}" />\n`;
-      });
-      opml += `  </body>\n</opml>`;
-      const blob = new Blob([opml], { type: 'text/xml' });
-      const urlObj = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = urlObj;
-      a.download = 'feeds.opml';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(urlObj);
-    });
-  }
-
-  if (opmlInput) {
-    opmlInput.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const parser = new DOMParser();
-          const xml = parser.parseFromString(event.target.result, "text/xml");
-          const outlines = xml.querySelectorAll("outline[xmlUrl]");
-          let addedCount = 0;
-          outlines.forEach(outline => {
-            const url = outline.getAttribute("xmlUrl");
-            if (url && !feeds.includes(url)) {
-              feeds.push(url);
-              addedCount++;
-            }
-          });
-          if (addedCount > 0) {
-            saveData();
-            renderFeeds();
-            fetchFeeds();
-            showToast(`${addedCount} ${t('js_imported')}`);
-          } else {
-            showToast(t('js_no_new_feeds'));
-          }
-        } catch (err) {
-          showToast(t('js_err_opml'));
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    });
-  }
-}
-
-function setupBackupListeners() {
-  if (btnExportBackup) {
-    btnExportBackup.addEventListener('click', () => {
-      const backupData = { feeds, config, articles, savedArticles, readArticles, hiddenArticles, lastUpdate, feedHealthStatus };
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const urlObj = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = urlObj;
-      a.download = `galacticarss_backup_${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(urlObj);
-      showToast('Backup OK');
-    });
-  }
-
-  if (inputImportBackup) {
-    inputImportBackup.addEventListener('change', (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = JSON.parse(event.target.result);
-          if (data.config) {
-            config = { ...config, ...data.config };
-            if (!config.feedCategories) config.feedCategories = {};
-            if (!config.customCategories) config.customCategories = [];
-            if (!config.feedFilters) config.feedFilters = {};
-          }
-          if (data.feeds) feeds = ensureArray(data.feeds);
-          if (data.articles) articles = ensureArray(data.articles);
-          if (data.savedArticles) savedArticles = ensureArray(data.savedArticles);
-          if (data.readArticles) readArticles = ensureArray(data.readArticles);
-          if (data.hiddenArticles) hiddenArticles = ensureArray(data.hiddenArticles);
-          if (data.lastUpdate) lastUpdate = data.lastUpdate;
-          if (data.feedHealthStatus) feedHealthStatus = data.feedHealthStatus;
-
-          saveData();
-          applyConfig();
-          renderFeeds();
-          renderTimeline();
-          renderSalvos();
-          setupTagInputs();
-          showToast('Backup OK');
-        } catch (err) {
-          showToast(t('js_err_backup'));
-        }
-      };
-      reader.readAsText(file);
-      e.target.value = '';
-    });
-  }
-}
-
-function setupAccordionListeners() {
-  if (btnWordFilters && wordFiltersContent) {
-    btnWordFilters.addEventListener('click', () => {
-      const isExpanded = btnWordFilters.classList.toggle('expanded');
-      wordFiltersContent.classList.toggle('expanded', isExpanded);
-    });
-  }
-}
-
-const scrollPositions = {};
-
-function switchToTab(targetTab) {
-  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
-  if (activeTab && contentContainer) scrollPositions[activeTab] = contentContainer.scrollTop;
-
-  tabBtns.forEach(b => {
-    b.classList.remove('active');
-    b.classList.remove('animate-icon');
-  });
-  tabContents.forEach(c => c.classList.remove('active'));
-
-  const targetBtn = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`);
-  if (targetBtn) {
-    targetBtn.classList.add('active');
-    void targetBtn.offsetWidth;
-    targetBtn.classList.add('animate-icon');
-  }
-
-  const targetPanel = document.getElementById(targetTab);
-  if (targetPanel) targetPanel.classList.add('active');
-
-  animateHeaderActions(targetTab);
-
-  if (contentContainer) {
-    contentContainer.style.scrollBehavior = 'auto';
-    contentContainer.scrollTop = scrollPositions[targetTab] || 0;
-    requestAnimationFrame(() => contentContainer.style.scrollBehavior = '');
-
-    if (contentContainer.scrollTop > 300) {
-      if (btnBackToTop) btnBackToTop.classList.add('visible');
-    } else {
-      if (btnBackToTop) btnBackToTop.classList.remove('visible');
-    }
-  }
-}
-
-function setupTabNavigation() {
-  tabBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      switchToTab(btn.dataset.tab);
-    });
-  });
-}
-
+// ... existing code ... -->
 function animateHeaderActions(tabName) {
   const container = document.getElementById(tabName);
   if (!container) return;
@@ -3917,31 +3499,53 @@ function animateHeaderActions(tabName) {
   });
 }
 
-// Fetch XML com fallback de proxies CORS para ambiente Web
+// Fetch XML com fallback de HTTPS e múltiplos proxies CORS para ambiente Web
 async function fetchXML(url) {
+  const directCandidates = [url];
+  if (/^http:\/\//i.test(url)) {
+    directCandidates.unshift(url.replace(/^http:\/\//i, 'https://'));
+  }
+
+  for (const candidateUrl of directCandidates) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4500);
+      const res = await fetch(candidateUrl, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const text = await res.text();
+        if (text.includes('<rss') || text.includes('<feed') || text.includes('<rdf') || text.includes('<?xml')) {
+          return text;
+        }
+      }
+    } catch (e) {}
+  }
+
+  // Endpoint JSON do AllOrigins (evita bloqueios de cabeçalho do /raw)
   try {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, { signal: controller.signal });
+    const timer = setTimeout(() => controller.abort(), 7500);
+    const res = await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`, { signal: controller.signal });
     clearTimeout(timer);
     if (res.ok) {
-      const text = await res.text();
+      const json = await res.json();
+      const text = json?.contents || '';
       if (text.includes('<rss') || text.includes('<feed') || text.includes('<rdf') || text.includes('<?xml')) {
         return text;
       }
     }
   } catch (e) {}
 
-  const proxies = [
+  const rawProxies = [
     `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
     `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-    `https://corsproxy.io/?${encodeURIComponent(url)}`
+    `https://corsproxy.org/?${encodeURIComponent(url)}`
   ];
 
-  for (const proxy of proxies) {
+  for (const proxy of rawProxies) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), 7500);
       const response = await fetch(proxy, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (response.ok) {
@@ -3952,7 +3556,70 @@ async function fetchXML(url) {
       }
     } catch (error) {}
   }
-  throw new Error("Falha ao carregar o feed.");
+  throw new Error("Falha ao carregar o feed XML.");
+}
+
+// Contingência via API rss2json quando os proxies XML são bloqueados pelo servidor de origem
+async function fetchViaRss2Json(feedUrl) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(feedUrl)}`, {
+      signal: controller.signal
+    });
+    if (!res.ok) throw new Error('rss2json HTTP error');
+    const data = await res.json();
+    if (data.status !== 'ok' || !Array.isArray(data.items)) {
+      throw new Error(data.message || 'rss2json invalid response');
+    }
+
+    let fallbackHost = feedUrl;
+    try { fallbackHost = new URL(feedUrl).hostname; } catch (e) {}
+    const siteTitle = (data.feed?.title || fallbackHost).trim();
+
+    return data.items.map(item => {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = item.description || item.content || '';
+      const summary = (tmp.textContent || tmp.innerText || '').trim();
+
+      let imageUrl = item.thumbnail || item.enclosure?.link || null;
+      if (!imageUrl) {
+        const imgTag = tmp.querySelector('img');
+        if (imgTag) imageUrl = imgTag.src;
+      }
+      if (imageUrl) {
+        try { imageUrl = new URL(imageUrl, feedUrl).href; } catch (e) { imageUrl = null; }
+      }
+
+      let timestamp = Date.now();
+      if (item.pubDate) {
+        const isoGuess = item.pubDate.includes('T') ? item.pubDate : item.pubDate.replace(' ', 'T') + 'Z';
+        const parsedTime = new Date(isoGuess).getTime() || new Date(item.pubDate).getTime();
+        if (!isNaN(parsedTime)) timestamp = parsedTime;
+      }
+
+      return {
+        title: (item.title || t('js_no_title')).trim(),
+        link: item.link || '#',
+        summary,
+        imageUrl,
+        siteTitle,
+        timestamp,
+        feedUrl
+      };
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchAndParseFeed(url) {
+  try {
+    const xmlString = await fetchXML(url);
+    return parseRSS(xmlString, url);
+  } catch (xmlErr) {
+    return await fetchViaRss2Json(url);
+  }
 }
 
 async function fetchFeeds(silent = false) {
@@ -3966,25 +3633,34 @@ async function fetchFeeds(silent = false) {
     renderSkeletons();
   }
 
-  const fetchPromises = feeds.map(async (url) => {
-    try {
-      const xmlString = await fetchXML(url);
-      const parsed = parseRSS(xmlString, url);
-      feedHealthStatus[url] = { consecutiveFailures: 0, lastError: '', healthy: true };
-      return parsed;
-    } catch (error) {
-      const current = feedHealthStatus[url] || { consecutiveFailures: 0, healthy: true };
-      const failures = (current.consecutiveFailures || 0) + 1;
-      feedHealthStatus[url] = {
-        consecutiveFailures: failures,
-        lastError: error.message || 'Falha de conexão',
-        healthy: failures < 3
-      };
-      return [];
-    }
-  });
+  // Processa em lotes de 3 feeds para evitar rate-limit (HTTP 429) nos proxies públicos
+  const BATCH_SIZE = 3;
+  const results = [];
 
-  const results = await Promise.all(fetchPromises);
+  for (let i = 0; i < feeds.length; i += BATCH_SIZE) {
+    const batch = feeds.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map(async (url) => {
+      try {
+        const parsed = await fetchAndParseFeed(url);
+        feedHealthStatus[url] = { consecutiveFailures: 0, lastError: '', healthy: true };
+        return parsed;
+      } catch (error) {
+        const current = feedHealthStatus[url] || { consecutiveFailures: 0, healthy: true };
+        const failures = (current.consecutiveFailures || 0) + 1;
+        feedHealthStatus[url] = {
+          consecutiveFailures: failures,
+          lastError: error.message || 'Falha de conexão',
+          healthy: failures < 3
+        };
+        return [];
+      }
+    }));
+    results.push(...batchResults);
+    if (i + BATCH_SIZE < feeds.length) {
+      await new Promise(resolve => setTimeout(resolve, 180));
+    }
+  }
+
   const newArticles = results.flat();
 
   // Merge deduplicado preservando traduções em cache
@@ -5242,10 +4918,8 @@ document.addEventListener('DOMContentLoaded', async () => {
       const originalText = btnAddFeed.textContent;
       btnAddFeed.textContent = t('js_checking');
       try {
-        const xmlString = await fetchXML(url);
-        const parser = new DOMParser();
-        const xml = parser.parseFromString(xmlString, "text/xml");
-        if (!xml.querySelector("rss, feed, channel, item, entry")) throw new Error("XML sem tags de feed");
+        const parsedTest = await fetchAndParseFeed(url);
+        if (!Array.isArray(parsedTest)) throw new Error("Feed inválido");
 
         feeds.push(url);
         feedInput.value = '';
