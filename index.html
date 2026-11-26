@@ -9,6 +9,7 @@
 <meta name="apple-mobile-web-app-title" content="Galactica RSS">
 <meta name="mobile-web-app-capable" content="yes">
 <title>Galactica RSS</title>
+<link rel="manifest" href="./manifest.json">
 <link rel="icon" href="icon-128.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-128.png">
 <style>
@@ -2562,86 +2563,8 @@ body[data-theme="dark"] .tag-remove {
 </div>
 
 <script>
-// --- REGISTRO DINÂMICO DE MANIFEST PWA & SERVICE WORKER ---
+// --- REGISTRO DO SERVICE WORKER PARA PWA OFFLINE E WEB SHARE TARGET ---
 (function initPWA() {
-  async function buildPaddedMaskableIcon(iconUrl) {
-    return new Promise((resolve) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
-        try {
-          const size = 512;
-          const canvas = document.createElement('canvas');
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext('2d');
-
-          // Amostra a borda do ícone original para preencher o fundo sem cortes no Android
-          const probe = document.createElement('canvas');
-          probe.width = img.naturalWidth || 128;
-          probe.height = img.naturalHeight || 128;
-          const pCtx = probe.getContext('2d');
-          pCtx.drawImage(img, 0, 0);
-          const pixel = pCtx.getImageData(2, 2, 1, 1).data;
-
-          if (pixel[3] > 200) {
-            ctx.fillStyle = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
-          } else {
-            ctx.fillStyle = '#f4f4f5';
-          }
-          ctx.fillRect(0, 0, size, size);
-
-          // Desenha o logotipo centralizado com ~18% de margem em todos os lados (zona segura)
-          const innerScale = 0.64;
-          const targetSize = Math.round(size * innerScale);
-          const offset = Math.round((size - targetSize) / 2);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, offset, offset, targetSize, targetSize);
-
-          canvas.toBlob((blob) => {
-            resolve(blob ? URL.createObjectURL(blob) : iconUrl);
-          }, 'image/png');
-        } catch (e) {
-          resolve(iconUrl);
-        }
-      };
-      img.onerror = () => resolve(iconUrl);
-      img.src = iconUrl;
-    });
-  }
-
-  (async () => {
-    try {
-      const baseUrl = window.location.href.split('#')[0];
-      const icon128 = new URL('icon-128.png', baseUrl).href;
-      const icon48 = new URL('icon-48.png', baseUrl).href;
-      const paddedIcon512 = await buildPaddedMaskableIcon(icon128);
-
-      const manifestObj = {
-        name: "Galactica RSS",
-        short_name: "Galactica RSS",
-        description: "Leitor de feeds RSS limpo, sincronizado e com resumo por IA.",
-        start_url: baseUrl,
-        scope: new URL('./', baseUrl).href,
-        display: "standalone",
-        orientation: "portrait",
-        background_color: "#131314",
-        theme_color: "#131314",
-        icons: [
-          { src: icon48, sizes: "48x48", type: "image/png", purpose: "any" },
-          { src: icon128, sizes: "128x128", type: "image/png", purpose: "any" },
-          { src: paddedIcon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
-        ]
-      };
-      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
-      const manifestLink = document.createElement('link');
-      manifestLink.rel = 'manifest';
-      manifestLink.href = URL.createObjectURL(manifestBlob);
-      document.head.appendChild(manifestLink);
-    } catch (e) {}
-  })();
-
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('./sw.js').catch(() => {});
@@ -2793,7 +2716,8 @@ const i18n = {
     pwa_install_lbl: "Atalho / Aplicativo:", pwa_install_btn: "Instalar App", pwa_installed_badge: "Instalado ✓",
     pwa_installed: "Aplicativo instalado com sucesso!", pwa_modal_title: "Instalar como Aplicativo",
     pwa_ios_hint: "No Safari (iPhone/iPad), toque no ícone de Compartilhar na barra inferior e escolha 'Adicionar à Tela de Início'.",
-    pwa_desktop_hint: "No menu do navegador (⋮ ou ícone na barra de endereços), selecione 'Instalar Galactica RSS' ou 'Adicionar à tela inicial' para usar como aplicativo."
+    pwa_desktop_hint: "No menu do navegador (⋮ ou ícone na barra de endereços), selecione 'Instalar Galactica RSS' ou 'Adicionar à tela inicial' para usar como aplicativo.",
+    share_saving: "Salvando link compartilhado...", share_already_saved: "Este link já está nos seus Salvos."
   },
   'en': {
     tab_timeline: "Timeline", tab_saved: "Saved", tab_feeds: "Feeds", tab_options: "Options",
@@ -2846,7 +2770,8 @@ const i18n = {
     pwa_install_lbl: "App Shortcut:", pwa_install_btn: "Install App", pwa_installed_badge: "Installed ✓",
     pwa_installed: "App installed successfully!", pwa_modal_title: "Install as App",
     pwa_ios_hint: "In Safari (iPhone/iPad), tap the Share icon at the bottom bar and select 'Add to Home Screen'.",
-    pwa_desktop_hint: "In your browser menu (⋮ or the address bar icon), select 'Install Galactica RSS' or 'Add to Home Screen' to use it like a native app."
+    pwa_desktop_hint: "In your browser menu (⋮ or the address bar icon), select 'Install Galactica RSS' or 'Add to Home Screen' to use it like a native app.",
+    share_saving: "Saving shared link...", share_already_saved: "This link is already in your Saved list."
   },
   'es': {
     tab_timeline: "Timeline", tab_saved: "Guardados", tab_feeds: "Feeds", tab_options: "Opciones",
@@ -2899,7 +2824,8 @@ const i18n = {
     pwa_install_lbl: "Acceso directo / App:", pwa_install_btn: "Instalar App", pwa_installed_badge: "Instalado ✓",
     pwa_installed: "¡Aplicación instalada con éxito!", pwa_modal_title: "Instalar como Aplicación",
     pwa_ios_hint: "En Safari (iPhone/iPad), toca el icono Compartir en la barra inferior y elige 'Añadir a pantalla de inicio'.",
-    pwa_desktop_hint: "En el menú del navegador (⋮ o en la barra de direcciones), selecciona 'Instalar Galactica RSS' o 'Añadir a pantalla de inicio'."
+    pwa_desktop_hint: "En el menú del navegador (⋮ o en la barra de direcciones), selecciona 'Instalar Galactica RSS' o 'Añadir a pantalla de inicio'.",
+    share_saving: "Guardando enlace compartido...", share_already_saved: "Este enlace ya está en Guardados."
   },
   'fr': {
     tab_timeline: "Timeline", tab_saved: "Enregistrés", tab_feeds: "Flux", tab_options: "Options",
@@ -2952,7 +2878,8 @@ const i18n = {
     pwa_install_lbl: "Raccourci / Application :", pwa_install_btn: "Installer l'app", pwa_installed_badge: "Installée ✓",
     pwa_installed: "Application installée avec succès !", pwa_modal_title: "Installer comme Application",
     pwa_ios_hint: "Dans Safari (iPhone/iPad), appuyez sur Partager en bas de l'écran puis sur « Sur l'écran d'accueil ».",
-    pwa_desktop_hint: "Dans le menu du navigateur (⋮ ou barre d'adresse), sélectionnez « Installer Galactica RSS »."
+    pwa_desktop_hint: "Dans le menu du navigateur (⋮ ou barre d'adresse), sélectionnez « Installer Galactica RSS ».",
+    share_saving: "Enregistrement du lien partagé...", share_already_saved: "Ce lien est déjà dans vos Enregistrés."
   },
   'zh': {
     tab_timeline: "时间线", tab_saved: "已保存", tab_feeds: "订阅源", tab_options: "选项",
@@ -3005,7 +2932,8 @@ const i18n = {
     pwa_install_lbl: "应用快捷方式：", pwa_install_btn: "安装应用", pwa_installed_badge: "已安装 ✓",
     pwa_installed: "应用安装成功！", pwa_modal_title: "安装为应用",
     pwa_ios_hint: "在 Safari（iPhone/iPad）中，点击底部的分享图标并选择“添加到主屏幕”。",
-    pwa_desktop_hint: "在浏览器菜单（⋮ 或地址栏图标）中选择“安装 Galactica RSS”或“添加到主屏幕”。"
+    pwa_desktop_hint: "在浏览器菜单（⋮ 或地址栏图标）中选择“安装 Galactica RSS”或“添加到主屏幕”。",
+    share_saving: "正在保存分享的链接...", share_already_saved: "此链接已在您的保存列表中。"
   }
 };
 
@@ -3413,6 +3341,161 @@ function setupAuthListeners() {
       showToast(t('js_sync_ok'));
     }
   });
+}
+
+// --- WEB SHARE TARGET API (RECEBER LINKS COMPARTILHADOS PELO CELULAR) ---
+function extractSharedPayload() {
+  const params = new URLSearchParams(window.location.search);
+  let rawUrl = (params.get('url') || '').trim();
+  const rawText = (params.get('text') || '').trim();
+  const rawTitle = (params.get('title') || '').trim();
+
+  if (!rawUrl && window.location.hash.includes('url=')) {
+    const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    rawUrl = (hashParams.get('url') || '').trim();
+  }
+
+  let targetUrl = sanitizeUrl(rawUrl, '');
+  if (!targetUrl && rawText) {
+    const match = rawText.match(/https?:\/\/[^\s<>"')]+/i);
+    if (match) targetUrl = sanitizeUrl(match[0], '');
+  }
+  if (!targetUrl && rawTitle) {
+    const match = rawTitle.match(/https?:\/\/[^\s<>"')]+/i);
+    if (match) targetUrl = sanitizeUrl(match[0], '');
+  }
+
+  if (!targetUrl || targetUrl === '#') return null;
+
+  // Limpa os parâmetros da URL para evitar duplicação caso o app seja recarregado
+  try {
+    window.history.replaceState({}, document.title, window.location.pathname);
+  } catch (e) {}
+
+  return {
+    url: targetUrl,
+    title: rawTitle,
+    text: rawText.replace(targetUrl, '').trim()
+  };
+}
+
+async function fetchSharedLinkMetadata(sharedData) {
+  const targetUrl = sharedData.url;
+  const urlObj = new URL(targetUrl);
+  const hostname = urlObj.hostname.replace(/^www\./, '');
+  let title = sharedData.title || '';
+  let summary = sharedData.text || '';
+  let imageUrl = null;
+  let siteTitle = hostname;
+
+  const parseMetaFromHtml = (html) => {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(html, 'text/html');
+    const getMeta = (selectors) => {
+      for (const sel of selectors) {
+        const val = doc.querySelector(sel)?.getAttribute('content')?.trim();
+        if (val) return val;
+      }
+      return '';
+    };
+
+    const ogTitle = getMeta(['meta[property="og:title"]', 'meta[name="twitter:title"]']);
+    const docTitle = (doc.querySelector('title')?.textContent || '').replace(/\s+/g, ' ').trim();
+    if (ogTitle || docTitle) title = ogTitle || docTitle;
+
+    const ogDesc = getMeta(['meta[property="og:description"]', 'meta[name="description"]', 'meta[name="twitter:description"]']);
+    if (ogDesc) summary = ogDesc;
+
+    const ogSite = getMeta(['meta[property="og:site_name"]']);
+    if (ogSite) siteTitle = ogSite;
+
+    const rawImg = getMeta(['meta[property="og:image"]', 'meta[name="twitter:image"]', 'meta[property="og:image:url"]']);
+    if (rawImg) {
+      try {
+        imageUrl = new URL(rawImg, targetUrl).href;
+      } catch (e) {
+        imageUrl = null;
+      }
+    }
+  };
+
+  const candidates = [
+    targetUrl,
+    `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`,
+    `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(targetUrl)}`
+  ];
+
+  for (const candidate of candidates) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 5000);
+      const res = await fetch(candidate, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) {
+        const text = await res.text();
+        if (text && (text.includes('<html') || text.includes('<meta') || text.includes('<title'))) {
+          parseMetaFromHtml(text);
+          break;
+        }
+      }
+    } catch (e) {}
+  }
+
+  return {
+    title: title || hostname,
+    link: targetUrl,
+    summary: summary || '',
+    imageUrl: imageUrl || null,
+    siteTitle,
+    timestamp: Date.now(),
+    feedUrl: 'web-saved'
+  };
+}
+
+async function handleIncomingSharedTarget() {
+  const shared = extractSharedPayload();
+  if (!shared) return false;
+
+  switchToTab('salvos');
+  showToast(t('share_saving'));
+
+  // Verifica se o link compartilhado é diretamente um feed RSS/Atom
+  const looksLikeFeed = /(\/feed\/?|\/rss\/?|\.rss|\.xml|\.atom)(\?.*)?$/i.test(shared.url);
+  if (looksLikeFeed) {
+    try {
+      const xmlString = await fetchXML(shared.url);
+      const parser = new DOMParser();
+      const xml = parser.parseFromString(xmlString, 'text/xml');
+      if (xml.querySelector('rss, feed, channel, item, entry')) {
+        if (!feeds.includes(shared.url)) {
+          feeds.push(shared.url);
+          if (!config.feedCategories) config.feedCategories = {};
+          config.feedCategories[shared.url] = 'geral';
+          saveData();
+          renderFeeds();
+          switchToTab('timeline');
+          showToast(t('js_added'));
+          await fetchFeeds(true);
+        } else {
+          switchToTab('feeds');
+          showToast(t('js_exists'));
+        }
+        return true;
+      }
+    } catch (e) {}
+  }
+
+  if (savedArticles.some(a => a.link === shared.url)) {
+    showToast(t('share_already_saved'));
+    return true;
+  }
+
+  const article = await fetchSharedLinkMetadata(shared);
+  savedArticles.unshift(article);
+  saveData();
+  renderSalvos();
+  showToast(t('js_saved'));
+  return true;
 }
 
 let saveDataTimeout;
@@ -5021,10 +5104,16 @@ document.addEventListener('DOMContentLoaded', async () => {
   setupAuthListeners();
   setupPlayerListeners();
 
+  // Processa eventual link recebido via menu Compartilhar do celular (Web Share Target)
+  const hadSharedTarget = await handleIncomingSharedTarget();
+
   // Sincroniza automaticamente com a nuvem ao abrir o app web se estiver logado
   if (firebaseUser) {
-    downloadFromFirebase();
-  } else if (feeds.length > 0) {
+    await downloadFromFirebase();
+    if (hadSharedTarget) {
+      await uploadToFirebase();
+    }
+  } else if (feeds.length > 0 && !hadSharedTarget) {
     checkAutoUpdate();
   }
 
