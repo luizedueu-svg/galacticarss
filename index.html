@@ -94,7 +94,7 @@ body[data-theme="dark"] .content {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   padding: 12px 0;
   height: 100%;
   box-sizing: border-box;
@@ -108,6 +108,8 @@ body[data-theme="dark"] .content {
   align-items: center;
   justify-content: center;
   width: 100%;
+  margin-top: auto;
+  margin-bottom: 14px;
   flex-shrink: 0;
 }
 
@@ -2562,31 +2564,83 @@ body[data-theme="dark"] .tag-remove {
 <script>
 // --- REGISTRO DINÂMICO DE MANIFEST PWA & SERVICE WORKER ---
 (function initPWA() {
-  try {
-    const baseUrl = window.location.href.split('#')[0];
-    const icon128 = new URL('icon-128.png', baseUrl).href;
-    const icon48 = new URL('icon-48.png', baseUrl).href;
-    const manifestObj = {
-      name: "Galactica RSS",
-      short_name: "Galactica",
-      description: "Leitor de feeds RSS limpo, sincronizado e com resumo por IA.",
-      start_url: baseUrl,
-      scope: new URL('./', baseUrl).href,
-      display: "standalone",
-      orientation: "portrait",
-      background_color: "#131314",
-      theme_color: "#131314",
-      icons: [
-        { src: icon48, sizes: "48x48", type: "image/png" },
-        { src: icon128, sizes: "128x128", type: "image/png", purpose: "any maskable" }
-      ]
-    };
-    const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
-    const manifestLink = document.createElement('link');
-    manifestLink.rel = 'manifest';
-    manifestLink.href = URL.createObjectURL(manifestBlob);
-    document.head.appendChild(manifestLink);
-  } catch (e) {}
+  async function buildPaddedMaskableIcon(iconUrl) {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        try {
+          const size = 512;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+
+          // Amostra a borda do ícone original para preencher o fundo sem cortes no Android
+          const probe = document.createElement('canvas');
+          probe.width = img.naturalWidth || 128;
+          probe.height = img.naturalHeight || 128;
+          const pCtx = probe.getContext('2d');
+          pCtx.drawImage(img, 0, 0);
+          const pixel = pCtx.getImageData(2, 2, 1, 1).data;
+
+          if (pixel[3] > 200) {
+            ctx.fillStyle = `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+          } else {
+            ctx.fillStyle = '#f4f4f5';
+          }
+          ctx.fillRect(0, 0, size, size);
+
+          // Desenha o logotipo centralizado com ~18% de margem em todos os lados (zona segura)
+          const innerScale = 0.64;
+          const targetSize = Math.round(size * innerScale);
+          const offset = Math.round((size - targetSize) / 2);
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, offset, offset, targetSize, targetSize);
+
+          canvas.toBlob((blob) => {
+            resolve(blob ? URL.createObjectURL(blob) : iconUrl);
+          }, 'image/png');
+        } catch (e) {
+          resolve(iconUrl);
+        }
+      };
+      img.onerror = () => resolve(iconUrl);
+      img.src = iconUrl;
+    });
+  }
+
+  (async () => {
+    try {
+      const baseUrl = window.location.href.split('#')[0];
+      const icon128 = new URL('icon-128.png', baseUrl).href;
+      const icon48 = new URL('icon-48.png', baseUrl).href;
+      const paddedIcon512 = await buildPaddedMaskableIcon(icon128);
+
+      const manifestObj = {
+        name: "Galactica RSS",
+        short_name: "Galactica RSS",
+        description: "Leitor de feeds RSS limpo, sincronizado e com resumo por IA.",
+        start_url: baseUrl,
+        scope: new URL('./', baseUrl).href,
+        display: "standalone",
+        orientation: "portrait",
+        background_color: "#131314",
+        theme_color: "#131314",
+        icons: [
+          { src: icon48, sizes: "48x48", type: "image/png", purpose: "any" },
+          { src: icon128, sizes: "128x128", type: "image/png", purpose: "any" },
+          { src: paddedIcon512, sizes: "512x512", type: "image/png", purpose: "maskable" }
+        ]
+      };
+      const manifestBlob = new Blob([JSON.stringify(manifestObj)], { type: 'application/manifest+json' });
+      const manifestLink = document.createElement('link');
+      manifestLink.rel = 'manifest';
+      manifestLink.href = URL.createObjectURL(manifestBlob);
+      document.head.appendChild(manifestLink);
+    } catch (e) {}
+  })();
 
   if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
     window.addEventListener('load', () => {
