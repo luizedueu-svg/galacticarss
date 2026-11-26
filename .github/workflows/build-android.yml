@@ -28,7 +28,7 @@ uses: actions/checkout@v4
     run: npm install
 
   - name: Prepare web assets
-    run: mkdir -p www && cp index.html www/ && cp icon-128.png www/
+    run: mkdir -p www && cp index.html www/ && cp -f icon-*.png www/ 2>/dev/null || true
 
   - name: Add Android platform
     run: npx cap add android
