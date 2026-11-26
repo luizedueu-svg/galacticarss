@@ -1,14 +1,14 @@
 {
-"appId": "com.galacticarss.app",
-"appName": "Galactica RSS",
-"webDir": "www",
-"server": {
-"androidScheme": "https",
-"cleartext": true
+"name": "galactica-rss-android",
+"version": "4.2.0",
+"description": "Galactica RSS Native Android App via Capacitor",
+"private": true,
+"scripts": {
+"cap:sync": "npx cap sync android"
 },
-"plugins": {
-"CapacitorHttp": {
-"enabled": true
-}
+"dependencies": {
+"@capacitor/android": "^6.2.0",
+"@capacitor/cli": "^6.2.0",
+"@capacitor/core": "^6.2.0"
 }
 }
