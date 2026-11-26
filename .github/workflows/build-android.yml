@@ -1,0 +1,59 @@
+name: Compilar APK Android (Galactica RSS)
+
+on:
+push:
+branches:
+- main
+workflow_dispatch:
+
+jobs:
+build-android-apk:
+runs-on: ubuntu-latest
+
+steps:
+  - name: Baixar código do repositório
+    uses: actions/checkout@v4
+
+  - name: Configurar Node.js 20
+    uses: actions/setup-node@v4
+    with:
+      node-version: '20'
+
+  - name: Configurar Java 17 (Temurin)
+    uses: actions/setup-java@v4
+    with:
+      distribution: 'temurin'
+      java-version: '17'
+
+  - name: Instalar dependências do Capacitor
+    run: npm install
+
+  - name: Preparar pasta web (www)
+    run: |
+      mkdir -p www
+      cp index.html www/
+      [ -f icon-16.png ] && cp icon-16.png www/ || true
+      [ -f icon-48.png ] && cp icon-48.png www/ || true
+      [ -f icon-128.png ] && cp icon-128.png www/ || true
+
+  - name: Gerar projeto Android nativo
+    run: npx cap add android
+
+  - name: Aplicar configurações nativas (HTTP, Share Intent e Ícones)
+    run: node scripts/configure-android.js
+
+  - name: Sincronizar assets com o Android
+    run: npx cap sync android
+
+  - name: Compilar APK com Gradle
+    run: |
+      cd android
+      chmod +x gradlew
+      ./gradlew assembleDebug
+
+  - name: Publicar APK para download
+    uses: actions/upload-artifact@v4
+    with:
+      name: Galactica-RSS-Android
+      path: android/app/build/outputs/apk/debug/app-debug.apk
+      retention-days: 30
