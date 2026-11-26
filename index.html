@@ -3475,7 +3475,424 @@ async function handleIncomingSharedTarget() {
   }
 
   if (savedArticles.some(a => a.link === shared.url)) {
-// ... existing code ... -->
+    showToast(t('share_already_saved'));
+    return true;
+  }
+
+  const sharedArticle = await fetchSharedLinkMetadata(shared);
+  savedArticles.unshift(sharedArticle);
+  saveData();
+  renderSalvos();
+  showToast(t('js_saved'));
+  return true;
+}
+
+let saveDataTimeout;
+async function loadData() {
+  return new Promise((resolve) => {
+    storage.get(['firebaseUser', 'feeds', 'config', 'articles', 'savedArticles', 'readArticles', 'hiddenArticles', 'lastUpdate', 'feedHealthStatus'], (res) => {
+      if (res.firebaseUser) {
+        firebaseUser = res.firebaseUser;
+        updateAuthUI();
+      }
+      const rawFeeds = ensureArray(res.feeds);
+      feeds = rawFeeds.filter(f => typeof f === 'string' && !f.includes(' ') && f.includes('.'));
+      if (res.config && typeof res.config === 'object') {
+        config = { ...config, ...res.config };
+      }
+      if (!config.feedCategories) config.feedCategories = {};
+      if (!config.customCategories) config.customCategories = [];
+      if (!config.feedFilters) config.feedFilters = {};
+
+      articles = ensureArray(res.articles);
+      savedArticles = ensureArray(res.savedArticles);
+      readArticles = ensureArray(res.readArticles);
+      hiddenArticles = ensureArray(res.hiddenArticles);
+      lastUpdate = Number(res.lastUpdate) || 0;
+      feedHealthStatus = (res.feedHealthStatus && typeof res.feedHealthStatus === 'object') ? res.feedHealthStatus : {};
+      resolve();
+    });
+  });
+}
+
+function saveData() {
+  clearTimeout(saveDataTimeout);
+  saveDataTimeout = setTimeout(() => {
+    storage.set({ feeds, config, articles, savedArticles, readArticles, hiddenArticles, lastUpdate, feedHealthStatus }, () => {
+      if (firebaseUser && !isSyncing) uploadToFirebase();
+    });
+  }, 800);
+}
+
+function autoPurgeCache() {
+  const PURGE_DAYS = 30;
+  const cutoffTimestamp = Date.now() - (PURGE_DAYS * 24 * 60 * 60 * 1000);
+  const savedLinks = new Set(savedArticles.map(a => a.link));
+  const initialCount = articles.length;
+
+  articles = articles.filter(a => a.timestamp >= cutoffTimestamp || savedLinks.has(a.link));
+
+  const validLinks = new Set([...articles.map(a => a.link), ...savedLinks]);
+  readArticles = readArticles.filter(link => validLinks.has(link));
+  hiddenArticles = hiddenArticles.filter(link => validLinks.has(link));
+
+  if (articles.length !== initialCount) {
+    saveData();
+  }
+}
+
+function setupConfigEventListeners() {
+  if (configRange) configRange.addEventListener('change', (e) => { config.articleRange = parseInt(e.target.value, 10); saveData(); renderTimeline(); });
+  if (configInterval) configInterval.addEventListener('change', (e) => { config.updateInterval = parseInt(e.target.value, 10); saveData(); });
+  if (configTheme) configTheme.addEventListener('change', (e) => { config.theme = e.target.value; applyTheme(config.theme); saveData(); });
+  if (configSummaryType) configSummaryType.addEventListener('change', (e) => { config.aiSummaryType = e.target.value; saveData(); });
+  if (configAiProfile) configAiProfile.addEventListener('change', (e) => { config.aiProfile = e.target.value; saveData(); });
+
+  if (feedSortSelect) {
+    feedSortSelect.addEventListener('change', (e) => {
+      config.feedSortOrder = e.target.value;
+      saveData();
+      renderFeeds();
+    });
+  }
+
+  if (salvosSortSelect) {
+    salvosSortSelect.addEventListener('change', (e) => {
+      config.salvosSortOrder = e.target.value;
+      saveData();
+      renderSalvos();
+    });
+  }
+
+  if (configLanguage) {
+    configLanguage.addEventListener('change', (e) => {
+      config.language = e.target.value;
+      articles.forEach(a => { delete a.translatedTitle; delete a.translatedSummary; });
+      savedArticles.forEach(a => { delete a.translatedTitle; delete a.translatedSummary; });
+      saveData();
+      applyTranslations();
+      renderTimeline();
+      renderSalvos();
+      renderFeeds();
+      updateAuthUI();
+    });
+  }
+
+  if (configAudioTypeEl) configAudioTypeEl.addEventListener('change', (e) => { config.audioType = e.target.value; saveData(); resetPlayer(); });
+
+  if (configClearFaded) {
+    configClearFaded.addEventListener('change', (e) => {
+      config.clearFaded = e.target.checked;
+      saveData();
+      renderTimeline();
+    });
+  }
+
+  const showAiEl = document.getElementById('config-show-ai');
+  if (showAiEl) {
+    showAiEl.addEventListener('change', (e) => {
+      config.showAi = e.target.checked;
+      if (aiSummaryContainer) aiSummaryContainer.style.display = config.showAi ? 'flex' : 'none';
+      saveData();
+    });
+  }
+
+  if (autoTranslateEl) {
+    autoTranslateEl.addEventListener('change', (e) => {
+      config.autoTranslate = e.target.checked;
+      saveData();
+      renderTimeline();
+      renderSalvos();
+    });
+  }
+
+  const llmModelEl = document.getElementById('config-llm-model');
+  if (llmModelEl) llmModelEl.addEventListener('change', (e) => { config.llmModel = e.target.value; saveData(); });
+
+  if (inputApiKey) inputApiKey.addEventListener('input', (e) => { config.apiKey = e.target.value; saveData(); });
+
+  const unreadEl = document.getElementById('config-unread');
+  if (unreadEl) unreadEl.addEventListener('change', (e) => { config.showUnread = e.target.checked; saveData(); renderTimeline(); });
+
+  if (toggleApiKeyBtn && inputApiKey) {
+    toggleApiKeyBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (inputApiKey.type === 'password') {
+        inputApiKey.type = 'text';
+        toggleApiKeyBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24M1 1l22 22"></path></svg>`;
+      } else {
+        inputApiKey.type = 'password';
+        toggleApiKeyBtn.innerHTML = `<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>`;
+      }
+    });
+  }
+
+  document.getElementById('btn-install-pwa')?.addEventListener('click', triggerInstallApp);
+  document.getElementById('btn-close-install-dialog')?.addEventListener('click', () => {
+    document.getElementById('install-dialog-overlay')?.classList.add('hidden');
+  });
+  document.getElementById('btn-ok-install-dialog')?.addEventListener('click', () => {
+    document.getElementById('install-dialog-overlay')?.classList.add('hidden');
+  });
+
+  let resetConfirmState = false;
+  if (btnResetData) {
+    btnResetData.addEventListener('click', () => {
+      if (!resetConfirmState) {
+        resetConfirmState = true;
+        btnResetData.textContent = t('js_reset_conf');
+        btnResetData.style.backgroundColor = '#d93025';
+        setTimeout(() => {
+          resetConfirmState = false;
+          btnResetData.textContent = t('btn_reset');
+          btnResetData.style.backgroundColor = '';
+        }, 4000);
+        return;
+      }
+      resetConfirmState = false;
+      btnResetData.textContent = t('btn_reset');
+      btnResetData.style.backgroundColor = '';
+
+      feeds = []; articles = []; savedArticles = []; readArticles = []; hiddenArticles = []; lastUpdate = 0; feedHealthStatus = {};
+      config = {
+        articleRange: 3, updateInterval: 15, theme: 'dark', language: 'pt-BR',
+        showUnread: false, clearFaded: true, wordFilter: '',
+        showAi: true, aiSummaryType: 'saved', aiProfile: 'news', audioType: 'ai_voice',
+        llmModel: 'gemini-2.5-flash', apiKey: '', viewMode: 'cards', autoTranslate: false,
+        feedSortOrder: 'recent', salvosSortOrder: 'recent', ttsSpeed: 1.0,
+        feedCategories: {}, customCategories: [], feedFilters: {}
+      };
+      storage.clear(() => {
+        saveData();
+        applyConfig();
+        renderFeeds();
+        renderTimeline();
+        renderSalvos();
+        setupTagInputs();
+        resetPlayer();
+        showToast(t('js_reset_done'));
+      });
+    });
+  }
+}
+
+function applyConfig() {
+  applyTheme(config.theme);
+  applyTranslations();
+  if (configRange) configRange.value = config.articleRange;
+  if (configInterval) configInterval.value = config.updateInterval;
+  if (configTheme) configTheme.value = config.theme;
+  if (configLanguage) configLanguage.value = config.language || 'pt-BR';
+  if (configAudioTypeEl) configAudioTypeEl.value = config.audioType || 'ai_voice';
+  if (configSummaryType) configSummaryType.value = config.aiSummaryType || 'saved';
+  if (configAiProfile) configAiProfile.value = config.aiProfile || 'news';
+  if (configClearFaded) configClearFaded.checked = config.clearFaded !== false;
+
+  if (autoTranslateEl) {
+    autoTranslateEl.checked = config.autoTranslate;
+    autoTranslateEl.disabled = false;
+    autoTranslateEl.parentElement.style.opacity = '1';
+  }
+
+  const showAiEl = document.getElementById('config-show-ai');
+  if (showAiEl) {
+    showAiEl.checked = config.showAi;
+    if (aiSummaryContainer) aiSummaryContainer.style.display = config.showAi ? 'flex' : 'none';
+  }
+
+  const llmModelEl = document.getElementById('config-llm-model');
+  if (llmModelEl) llmModelEl.value = config.llmModel;
+
+  if (inputApiKey) inputApiKey.value = config.apiKey || '';
+
+  const unreadEl = document.getElementById('config-unread');
+  if (unreadEl) unreadEl.checked = config.showUnread;
+
+  if (feedSortSelect) feedSortSelect.value = config.feedSortOrder || 'recent';
+  if (salvosSortSelect) salvosSortSelect.value = config.salvosSortOrder || 'recent';
+
+  updateSpeedUI();
+  renderTags('wordFilter', 'container-filter');
+  applyViewModeIcons();
+  updateAuthUI();
+  updateInstallAppUI();
+}
+
+function applyTheme(theme) {
+  document.body.dataset.theme = theme;
+  const metaTheme = document.getElementById('meta-theme-color');
+  if (metaTheme) {
+    metaTheme.setAttribute('content', theme === 'light' ? '#f8f9fa' : '#131314');
+  }
+}
+
+function setupOpmlListeners() {
+  if (btnOpmlExport) {
+    btnOpmlExport.addEventListener('click', () => {
+      if (feeds.length === 0) return showToast(t('js_no_export'));
+      let opml = `<?xml version="1.0" encoding="UTF-8"?>\n<opml version="1.0">\n  <head>\n    <title>Meus Feeds RSS</title>\n  </head>\n  <body>\n`;
+      feeds.forEach(url => {
+        const escapedUrl = url.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+        opml += `    <outline type="rss" xmlUrl="${escapedUrl}" />\n`;
+      });
+      opml += `  </body>\n</opml>`;
+      const blob = new Blob([opml], { type: 'text/xml' });
+      const urlObj = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = urlObj;
+      a.download = 'feeds.opml';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(urlObj);
+    });
+  }
+
+  if (opmlInput) {
+    opmlInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const parser = new DOMParser();
+          const xml = parser.parseFromString(event.target.result, "text/xml");
+          const outlines = xml.querySelectorAll("outline[xmlUrl]");
+          let addedCount = 0;
+          outlines.forEach(outline => {
+            const url = outline.getAttribute("xmlUrl");
+            if (url && !feeds.includes(url)) {
+              feeds.push(url);
+              addedCount++;
+            }
+          });
+          if (addedCount > 0) {
+            saveData();
+            renderFeeds();
+            fetchFeeds();
+            showToast(`${addedCount} ${t('js_imported')}`);
+          } else {
+            showToast(t('js_no_new_feeds'));
+          }
+        } catch (err) {
+          showToast(t('js_err_opml'));
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+  }
+}
+
+function setupBackupListeners() {
+  if (btnExportBackup) {
+    btnExportBackup.addEventListener('click', () => {
+      const backupData = { feeds, config, articles, savedArticles, readArticles, hiddenArticles, lastUpdate, feedHealthStatus };
+      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+      const urlObj = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = urlObj;
+      a.download = `galacticarss_backup_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(urlObj);
+      showToast('Backup OK');
+    });
+  }
+
+  if (inputImportBackup) {
+    inputImportBackup.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target.result);
+          if (data.config) {
+            config = { ...config, ...data.config };
+            if (!config.feedCategories) config.feedCategories = {};
+            if (!config.customCategories) config.customCategories = [];
+            if (!config.feedFilters) config.feedFilters = {};
+          }
+          if (data.feeds) feeds = ensureArray(data.feeds);
+          if (data.articles) articles = ensureArray(data.articles);
+          if (data.savedArticles) savedArticles = ensureArray(data.savedArticles);
+          if (data.readArticles) readArticles = ensureArray(data.readArticles);
+          if (data.hiddenArticles) hiddenArticles = ensureArray(data.hiddenArticles);
+          if (data.lastUpdate) lastUpdate = data.lastUpdate;
+          if (data.feedHealthStatus) feedHealthStatus = data.feedHealthStatus;
+
+          saveData();
+          applyConfig();
+          renderFeeds();
+          renderTimeline();
+          renderSalvos();
+          setupTagInputs();
+          showToast('Backup OK');
+        } catch (err) {
+          showToast(t('js_err_backup'));
+        }
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+  }
+}
+
+function setupAccordionListeners() {
+  if (btnWordFilters && wordFiltersContent) {
+    btnWordFilters.addEventListener('click', () => {
+      const isExpanded = btnWordFilters.classList.toggle('expanded');
+      wordFiltersContent.classList.toggle('expanded', isExpanded);
+    });
+  }
+}
+
+const scrollPositions = {};
+
+function switchToTab(targetTab) {
+  const activeTab = document.querySelector('.tab-btn.active')?.dataset.tab;
+  if (activeTab && contentContainer) scrollPositions[activeTab] = contentContainer.scrollTop;
+
+  tabBtns.forEach(b => {
+    b.classList.remove('active', 'animate-icon');
+  });
+  tabContents.forEach(c => c.classList.remove('active'));
+
+  const targetBtn = document.querySelector(`.tab-btn[data-tab="${targetTab}"]`);
+  if (targetBtn) {
+    targetBtn.classList.add('active');
+    void targetBtn.offsetWidth;
+    targetBtn.classList.add('animate-icon');
+  }
+
+  const targetPanel = document.getElementById(targetTab);
+  if (targetPanel) targetPanel.classList.add('active');
+
+  animateHeaderActions(targetTab);
+
+  if (contentContainer) {
+    contentContainer.style.scrollBehavior = 'auto';
+    contentContainer.scrollTop = scrollPositions[targetTab] || 0;
+    requestAnimationFrame(() => contentContainer.style.scrollBehavior = '');
+
+    if (contentContainer.scrollTop > 300) {
+      btnBackToTop?.classList.add('visible');
+    } else {
+      btnBackToTop?.classList.remove('visible');
+    }
+  }
+}
+
+function setupTabNavigation() {
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      switchToTab(btn.dataset.tab);
+    });
+  });
+}
+
 function animateHeaderActions(tabName) {
   const container = document.getElementById(tabName);
   if (!container) return;
