@@ -1,0 +1,14 @@
+{
+"appId": "com.galacticarss.app",
+"appName": "Galactica RSS",
+"webDir": "www",
+"server": {
+"androidScheme": "https",
+"cleartext": true
+},
+"plugins": {
+"CapacitorHttp": {
+"enabled": true
+}
+}
+}
